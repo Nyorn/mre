@@ -1,6 +1,7 @@
 <nav>
 	<a href="/offices">Our offices</a>
 	<a href="/">About us</a>
+	<a href="/objects">Каталог</a>
 </nav>
 
 <style>

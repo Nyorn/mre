@@ -36,7 +36,7 @@ export async function load({ params }) {
       message: response.statusText,
     })
   }
-  console.log(data);
+
   const { data } = await response.json()
   console.log("Data:", data);
   const { items } = data.objectCollection
