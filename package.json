@@ -1,0 +1,30 @@
+{
+  "name": "sveltekit-starter",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "vite dev --open",
+    "build": "vite build",
+    "package": "svelte-kit package",
+    "preview": "vite preview",
+    "lint": "prettier --check --plugin-search-dir=. .",
+    "format": "prettier --write --plugin-search-dir=. .",
+    "setup": "node ./contentful/setup.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "prettier": "^3.0.3",
+    "prettier-plugin-svelte": "^3.0.3",
+    "vite": "^4.5.0",
+    "contentful-import": "^9.4.8",
+    "dotenv": "^16.3.1"
+  },
+  "type": "module",
+  "dependencies": {
+    "@contentful/rich-text-html-renderer": "^16.3.0",
+    "@sveltejs/adapter-auto": "^2.1.1",
+    "@sveltejs/kit": "^1.27.3",
+    "svelte": "^4.2.2"
+  }
+}

@@ -1,0 +1,15 @@
+@import './starter.css';
+
+:root {
+	--max-width: 940px;
+}
+
+h1,
+h2 {
+	text-align: center;
+	display: block;
+}
+
+h2 {
+	margin-top: 2rem;
+}
