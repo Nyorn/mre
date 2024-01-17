@@ -14,17 +14,25 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "contentful-import": "^9.4.8",
+    "dotenv": "^16.3.1",
+    "eslint": "^8.56.0",
+    "eslint-plugin-svelte": "^2.35.1",
+    "postcss": "^8.4.33",
     "prettier": "^3.0.3",
     "prettier-plugin-svelte": "^3.0.3",
-    "vite": "^4.5.0",
-    "contentful-import": "^9.4.8",
-    "dotenv": "^16.3.1"
+    "tailwindcss": "^3.4.1",
+    "vite": "^4.5.0"
   },
   "type": "module",
   "dependencies": {
     "@contentful/rich-text-html-renderer": "^16.3.0",
+    "@skeletonlabs/skeleton": "^2.7.1",
+    "@skeletonlabs/tw-plugin": "^0.3.1",
     "@sveltejs/adapter-auto": "^2.1.1",
     "@sveltejs/kit": "^1.27.3",
+    "flowbite": "^2.2.1",
     "svelte": "^4.2.2"
   }
 }

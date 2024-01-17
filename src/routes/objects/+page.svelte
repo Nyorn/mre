@@ -3,28 +3,14 @@
   import Card from './Card.svelte';
   export let data;
   console.log(data); // Логирование полученных данных
-
 </script>
 
-<Header />
-
-<h2>Cities</h2>
-
-<section>
+<section class="max-w-[var(--max-width)] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
   {#each data.objects as object}
-
     <Card photo={object.photo} name={object.name} slug={object.slug} />
-
   {/each}
 </section>
 
 <style>
-    section {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-        grid-auto-rows: minmax(150px, auto);
-        grid-gap: 30px;
-        max-width: var(--max-width);
-        margin: 0 auto;
-    }
+    /* Если у вас есть дополнительные глобальные стили, вы можете оставить их здесь */
 </style>
