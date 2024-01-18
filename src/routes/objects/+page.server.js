@@ -12,9 +12,40 @@ const query = `
           format: AVIF
         })
         description
-      }
-    }
-  }
+      }     
+      city
+      area
+      bedrooms
+      floor
+      maxFloor
+      elevator
+      price
+      bathrooms
+      pool
+      parking
+      fromBuilder
+      heat
+      security
+      conserj
+      video
+      fitness
+      restoraunts
+      playground
+      tv
+      internet
+      altPhoto {
+        url(transform: {
+          format: AVIF
+        })
+       }
+      galleryCollection {
+        items {                  
+        url(transform: {
+          format: AVIF
+        })
+      
+        }
+      }}}
 }
 `
 

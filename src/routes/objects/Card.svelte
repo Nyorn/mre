@@ -2,6 +2,14 @@
 	export let photo;
 	export let slug;
 	export let name;
+	export let bedrooms;
+	export let area;
+	export let city;
+	export let elevator;
+	export let price;
+	export let floor;
+	export let maxFloor;
+
 </script>
 
 {#if photo}
@@ -9,7 +17,14 @@
 		<figure>
 			<img src={photo.url} alt={photo.description} />
 			<figcaption>
-				<p>{name}</p>
+				<h1>{name}</h1>
+				<p>Город: {city}</p>
+				<p>Площадь: {area}</p>
+				<p>Cпальни: {bedrooms}</p>
+				<p>Этаж: {floor} из {maxFloor}</p>
+				<p>Лифт: {elevator ? 'Есть' : 'Нет'}</p>
+				<p>Цена: {price}</p>
+
 			</figcaption>
 		</figure>
 	</a>
