@@ -1,21 +1,42 @@
+
+
 <script>
+	import Carousel from '$lib/Carousel.svelte'; // Путь к вашему компоненту карусели
 	export let data;
 	console.log("Data in slug.svelte:", data);
+
 	if (!data || !data.object) {
 		console.error("Data is not available or incorrect structure:", data);
 	}
+
+	// Получение массива ссылок на изображения из galleryCollection
+	let imageUrls = data.object.galleryCollection.items.map(item => item.url);
+
 </script>
 
-<h1>{data.object.name}</h1>
-
-<section class="flex">
-
+<h1 class="text-3xl md:text-4xl lg:text-5xl font-bold my-4">{data.object.name}</h1>
+<section class="flex flex-col md:flex-row justify-center items-center md:items-start md:space-x-4 px-4 py-2">
 	{#if data && data.object}
-	<p>{@html data.object.description}</p>
-	<img src={data.object.photo.url} alt={data.object.photo.description} />
+		<div class="w-full md:w-1/2">
+			<Carousel images={imageUrls} />
+			<img class="w-full h-auto rounded-lg shadow-md mt-4" src={data.object.photo.url} alt={data.object.photo.description} />
+
+		</div>
+		<div class="w-full md:w-1/2 mt-4 md:mt-0">
+			<div class="p-4 rounded-lg shadow-md">
+				<p class="text-sm md:text-base">Город: {data.object.city}</p>
+				<p class="text-sm md:text-base">Цена: {data.object.price}</p>
+				<p class="text-sm md:text-base">Этаж: {data.object.floor} из {data.object.maxFloor}</p>
+				<p class="text-sm md:text-base">Площадь: {data.object.area}</p>
+				<p class="text-sm md:text-base">Спален: {data.object.bedrooms}</p>
+				<p class="text-sm md:text-base">Лифт: {data.object.elevator ? 'Есть' : 'Нет'}</p>
+				<p class="text-base md:text-lg">{@html data.object.description}</p>
+
+			</div>
+		</div>
 	{:else}
 		<p>Информация об объекте не найдена.</p>
-		{/if}
+	{/if}
 </section>
 
 <hr />

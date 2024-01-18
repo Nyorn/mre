@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit'
 import { documentToHtmlString } from '@contentful/rich-text-html-renderer'
 import contentfulFetch from '$lib/contentful-fetch'
 
+
 export async function load({ params }) {
   console.log("Slug in slug.server.js:", params.slug);
   const query = `
@@ -13,6 +14,26 @@ export async function load({ params }) {
         lat
         lon
       }
+      city
+      area
+      price
+      floor
+      maxFloor
+      elevator
+      bedrooms
+      bathrooms
+      pool
+      parking
+      fromBuilder
+      heat
+      security
+      conserj
+      video
+      fitness
+      restoraunts
+      playground
+      tv
+      internet      
       slug
       description {
         json
@@ -23,6 +44,14 @@ export async function load({ params }) {
         })
         description
         }
+    galleryCollection {
+        items {                  
+        url(transform: {
+          format: AVIF
+        })
+      
+        }
+      }
       }
     }
   }
