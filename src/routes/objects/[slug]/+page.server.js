@@ -33,6 +33,7 @@ export async function load({ params }) {
       restoraunts
       playground
       tv
+      key
       internet      
       slug
       description {

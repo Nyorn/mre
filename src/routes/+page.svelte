@@ -1,8 +1,10 @@
 <script>
 	import Callout from '../lib/Callout.svelte';
 	import Hero from '../lib/Hero.svelte';
+	import FeedbackForm from '$lib/FeedbackForm.svelte';
 
 	export let data;
+
 </script>
 
 <Hero />
@@ -21,12 +23,10 @@
 			</figcaption>
 		</figure>
 	{/each}
+	<FeedbackForm />
 </section>
 
-<Callout>
-	Want to sync your website to the software that your recruitment team uses? Use
-	<a href="https://www.contentful.com/marketplace/">a Contentful integration</a> or create your own!
-</Callout>
+
 
 <style>
 	.team {

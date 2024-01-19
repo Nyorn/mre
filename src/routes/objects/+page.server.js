@@ -32,6 +32,7 @@ const query = `
       restoraunts
       playground
       tv
+      key
       internet
       altPhoto {
         url(transform: {

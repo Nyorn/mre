@@ -1,7 +1,9 @@
 
 
 <script>
-	import Carousel from '$lib/Carousel.svelte'; // Путь к вашему компоненту карусели
+	import Carousel from '$lib/Carousel.svelte';
+	import { modalStack } from '$lib/store.js'
+	import Modal from '$lib/FeedbackModal.svelte'
 	export let data;
 	console.log("Data in slug.svelte:", data);
 
@@ -31,6 +33,13 @@
 				<p class="text-sm md:text-base">Спален: {data.object.bedrooms}</p>
 				<p class="text-sm md:text-base">Лифт: {data.object.elevator ? 'Есть' : 'Нет'}</p>
 				<p class="text-base md:text-lg">{@html data.object.description}</p>
+				<Modal />
+				<button class="variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded" button on:click={() => {
+  console.log("Opening modal with object name:", data.object.name);
+  modalStack.open('feedback', { objectName: data.object.name });
+}}>
+				Заказать осмотр
+			</button>
 
 			</div>
 		</div>

@@ -11,6 +11,10 @@
 
 :root {
 	--max-width: 80%;
+	:root [data-theme='wintry'] {
+		--theme-rounded-base: 20px;
+		--theme-rounded-container: 4px;
+	}
 }
 
 h1,
