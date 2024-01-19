@@ -49,8 +49,10 @@
 
 <style>
     .feedback-form {
-        min-height: 320px; /* Пример минимальной высоты */
-        width: 100%; /* Занимает всю ширину контейнера */
+        min-height: 420px; /* Пример минимальной высоты */
+        background: darkslategrey; /* Занимает всю ширину контейнера */
+       width:400px;
+        padding: 10px;
     }
 
     .field-container {

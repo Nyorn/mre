@@ -1,9 +1,10 @@
 <script>
+  import Modal from '$lib/Modal.svelte'
   import Footer from '../lib/Footer.svelte'
   import Nav from '../lib/Nav.svelte'
   import FeedbackModal from '$lib/FeedbackModal.svelte';
   import { modalStack } from '$lib/store.js';
-  import Modal from '$lib/Modal.svelte'
+
 
 
 
