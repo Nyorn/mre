@@ -126,7 +126,7 @@
 
 <section class="max-w-[var(--max-width)] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
   {#each filteredData as object}
-    <Card photo={object.photo} name={object.name} slug={object.slug} bedrooms={object.bedrooms} area={object.area} city={object.city} elevator={object.elevator} price={object.price} floor={object.floor} maxFloor={object.maxFloor}/>
+    <Card object={object} />
   {/each}
 </section>
 

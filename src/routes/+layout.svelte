@@ -1,8 +1,12 @@
 <script>
   import Footer from '../lib/Footer.svelte'
   import Nav from '../lib/Nav.svelte'
-  import Modal from '$lib/FeedbackModal.svelte';
+  import FeedbackModal from '$lib/FeedbackModal.svelte';
   import { modalStack } from '$lib/store.js';
+  import Modal from '$lib/Modal.svelte'
+
+
+
 
 
 </script>

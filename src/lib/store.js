@@ -9,12 +9,10 @@ function createModalStack() {
       update(stack => [...stack, { open: true, type, data }]);
     },
     close: () => {
-      update(stack => {
-        const newStack = stack.slice(0, -1);
-        return newStack.length > 0 ? newStack : [{ open: false, type: null, data: null }];
-      });
+      update(stack => stack.slice(0, -1));
     }
   };
 }
+
 
 export const modalStack = createModalStack();
