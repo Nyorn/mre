@@ -1,4 +1,5 @@
 <script>
+  import { modalStack } from '$lib/store.js';
   export let images = []; // Массив изображений, переданный как props
   let elemCarousel; // HTMLDivElement;
 
@@ -20,6 +21,12 @@
   function carouselThumbnail(index) {
     elemCarousel.scroll(elemCarousel.clientWidth * index, 0);
   }
+  // In Carousel.svelte, update the openFullSizeImage function to pass the correct data structure
+  function openFullSizeImage(imageUrl) {
+    console.log("Opening image with URL:", imageUrl);
+    // The data structure should match what Modal.svelte expects for 'imageView' type
+    modalStack.open('imageView', { imageUrl });
+  }
 
 </script>
 
@@ -37,6 +44,7 @@
         src={image}
         alt="Image"
         loading="lazy"
+        on:click={() => openFullSizeImage(image)}
       />
     {/each}
   </div>
@@ -64,7 +72,7 @@
         display: flex;
         overflow-x: hidden;
         scroll-snap-type: x mandatory;
-        width: 80%;
+        width: 100%;
         margin: 0 auto;
 
 
