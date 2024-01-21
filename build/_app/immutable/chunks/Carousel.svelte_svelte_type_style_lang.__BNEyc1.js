@@ -1,1 +1,0 @@
-import{w as t}from"./index.7RFRkAwa.js";const u=s(),a=t(!1);function s(){const{subscribe:n,update:r}=t([]);return n(e=>console.log("Modal stack changed:",e)),{subscribe:n,open:(e,l)=>{console.log("Opening modal:",e,l),r(o=>o.some(i=>i.type===e)?o:[...o,{open:!0,type:e,data:l}])},close:()=>{r(e=>e.length>0?e.slice(0,-1):e)}}}export{a as i,u as m};

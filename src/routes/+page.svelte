@@ -4,11 +4,12 @@
 	import FeedbackForm from '$lib/FeedbackForm.svelte';
 	import InfoBlock from '$lib/InfoBlock.svelte';
 	import { onMount } from 'svelte';
-		import {SplideShaderCarousel, dissolveShader} from '@splidejs/splide-shader-carousel';
-		import '@splidejs/svelte-splide/css/splide.min.css';
+	import '@splidejs/svelte-splide/css/splide.min.css';
 	import '@splidejs/splide/css';
 
-		let splide;
+
+
+	let splide;
 	let currentSlide = 0;
 
 	const overlaysContent = [
@@ -19,24 +20,40 @@
 		{ title: 'Обретите свой уголок под солнцем с нами.', paragraph:'Выберите Болгарию для вашего нового дома или инвестиций! ', button: 'Подробнее' }
 	];
 		// Инициализируем слайдер после монтирования компонента
-		onMount(() => {
-			splide = new SplideShaderCarousel('.splide', dissolveShader, {
+	onMount(() => {
+		setTimeout(() => {
+			if (SplideShaderCarousel && SplideShaderCarousel.shaders && SplideShaderCarousel.shaders.dissolveShader) {
+				const { dissolveShader } = SplideShaderCarousel.shaders;
+
+				splide = new SplideShaderCarousel('.splide', dissolveShader, {
+				gradient: 'vertical',
 				type: 'fade',
 				height: '90vh',
 				rewind: true,
 				continuous: true,
-				autoplay: true, // Включаем автовоспроизведение
-				pauseOnHover: false, // Не останавливать при наведении
-				arrows: false, // Убираем стрелки
-				speed: 1750, // Скорость анимации в миллисекундах
-		});
+				autoplay: true,
+				pauseOnHover: false,
+				arrows: false,
+				speed: 1750,
+				mask: '/wave01.jpg'
+			});
 			splide.on('move', (newIndex) => {
 				currentSlide = newIndex;
 			});
-		splide.mount();
+			splide.mount();
+		} else {
+			console.error('SplideShaderCarousel or dissolveShader is not available');
+		}
+	}, 1000); // Задержка в 1 секунду
 	});
 </script>
-<link rel="stylesheet" href="node_modules/@splidejs/splide/dist/css/splide.min.css">
+
+<svelte:head>
+	<script src="https://unpkg.com/three@0.140.2/build/three.min.js"></script>
+	<script src="/splide-shader-carousel.min.js" defer></script>
+</svelte:head>
+
+
 <section class="splide" aria-label="Splide Shader Carousel Example">
 	<div class="splide__track">
 		<ul class="splide__list">

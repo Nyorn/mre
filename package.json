@@ -37,7 +37,6 @@
     "@skeletonlabs/skeleton": "^2.7.1",
     "@skeletonlabs/tw-plugin": "^0.3.1",
     "@splidejs/splide": "^4.1.4",
-    "@splidejs/splide-shader-carousel": "github:Splidejs/splide-shader-carousel",
     "@splidejs/svelte-splide": "^0.2.9",
     "@sveltejs/kit": "^2.4.1",
     "flowbite": "^2.2.1",
