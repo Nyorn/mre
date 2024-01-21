@@ -4,14 +4,19 @@
   import FeedbackForm from '$lib/FeedbackForm.svelte';
   import ObjectCardModal from '$lib/ObjectCardModal.svelte';
   import ImageViewer from '$lib/ImageViewer.svelte';
-
+  import { clickOutsideAction } from "svelte-legos";
+  function handleClickOutside() {
+    console.log("Click outside detected");
+    modalStack.close(); // Закрываем модальное окно
+  }
   function closeModal() {
+    console.log("Click outside detected on modal");
     modalStack.close();
   }
 </script>
 
 {#if $modalStack.length > 0}
-  <div class="modal-overlay">
+  <div class="modal-overlay" use:clickOutsideAction on:clickoutside={closeModal}>
     {#each $modalStack as modalItem}
       <div class="modal-window">
         {#if modalItem.type === 'feedback'}
@@ -52,10 +57,8 @@
     .modal-window {
         position: absolute;
         margin: auto;
-
         border-radius: 18px;
         z-index: 1001;
-        /* Do not set width here if you want different widths for different modals */
     }
 
     .close-button {
@@ -71,6 +74,5 @@
 
             border-radius: 8px;
             z-index: 1002;
-            /* Do not set width here if you want different widths for different modals */
         }
 </style>

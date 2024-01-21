@@ -2,6 +2,7 @@
   import Carousel from '$lib/Carousel.svelte';
   import { modalStack } from '$lib/store.js';
   import { documentToHtmlString } from '@contentful/rich-text-html-renderer';
+  import { clickOutsideAction } from "svelte-legos";
 
   export let data;
   export let object; // Данные текущего объекта
@@ -14,6 +15,10 @@
     modalStack.close();
   }
   console.log(object);
+  function handleClickOutside() {
+    console.log("Click outside detected");
+    modalStack.close(); // Закрываем модальное окно
+  }
 </script>
 
 
@@ -24,7 +29,7 @@
 
 
      <div class="object-card-modal grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-        <div>
+        <div >
 
           {#if images.length > 0}
             <Carousel {images} />
