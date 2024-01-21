@@ -40,11 +40,11 @@
 <section class="splide" aria-label="Splide Shader Carousel Example">
 	<div class="splide__track">
 		<ul class="splide__list">
-			<li class="splide__slide"><img src="src/assets/5.jpg" alt="Image 1" class="w-full" /></li>
-			<li class="splide__slide"><img src="src/assets/6.jpg" alt="Image 2" class="w-full" /></li>
-			<li class="splide__slide"><img src="src/assets/7.jpg" alt="Image 3" class="w-full" /></li>
-			<li class="splide__slide"><img src="src/assets/8.jpg" alt="Image 4" class="w-full" /></li>
-			<li class="splide__slide"><img src="src/assets/9.jpg" alt="Image 5" class="w-full" /></li>
+			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/5S3oxQ5YnMis48RHU5EDlW/c7a173da23f0e7a283af64c74c883e49/6.jpg" alt="Image 1" class="w-full" /></li>
+			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/3IR96Tct5EEWK2kvkr0zMR/6a4cc78c2a240fe39aa58c8291dc424b/5.jpg" alt="Image 2" class="w-full" /></li>
+			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/7rKPPYiTx6mu5o4EzpKOKB/130193a6f8580c8d9df2a9fac5ee66e9/7.jpg" alt="Image 3" class="w-full" /></li>
+			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/2PdBBJGQCso03iFHKP5F1a/0906cf5525eef4c8b8517393836aac88/8.jpg" alt="Image 4" class="w-full" /></li>
+			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/3RYCIJ4Yta5z88joncN01a/f1297e242ddde87e95f8b2109cfea084/9.jpg" alt="Image 5" class="w-full" /></li>
 		</ul>
 	</div>
 	<div class="overlay" style={`left: ${currentSlide * (100 / (overlaysContent.length - 1))}%; transform: translateX(-${currentSlide === 0 ? 0 : currentSlide === overlaysContent.length - 1 ? 500 : 250}px);`}>

@@ -14,6 +14,7 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.1",
     "autoprefixer": "^10.4.16",
     "contentful-import": "^9.4.8",
     "dotenv": "^16.3.1",
@@ -23,7 +24,7 @@
     "prettier": "^3.0.3",
     "prettier-plugin-svelte": "^3.0.3",
     "tailwindcss": "^3.4.1",
-    "vite": "^4.5.0"
+    "vite": "^5.0.12"
   },
   "type": "module",
   "dependencies": {
@@ -38,8 +39,7 @@
     "@splidejs/splide": "^4.1.4",
     "@splidejs/splide-shader-carousel": "github:Splidejs/splide-shader-carousel",
     "@splidejs/svelte-splide": "^0.2.9",
-    "@sveltejs/adapter-auto": "^2.1.1",
-    "@sveltejs/kit": "^1.27.3",
+    "@sveltejs/kit": "^2.4.1",
     "flowbite": "^2.2.1",
     "svelte": "^4.2.2",
     "svelte-awesome": "^3.3.1",
