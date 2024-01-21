@@ -21,7 +21,7 @@
 	{#if data && data.object}
 		<div class="w-full md:w-1/2">
 			<Carousel images={imageUrls} />
-			<img class="w-full h-auto rounded-lg shadow-md mt-4" src={data.object.photo.url} alt={data.object.photo.description} />
+
 
 		</div>
 		<div class="w-full md:w-1/2 mt-4 md:mt-0">
@@ -32,15 +32,28 @@
 				<p class="text-sm md:text-base">Площадь: {data.object.area}</p>
 				<p class="text-sm md:text-base">Спален: {data.object.bedrooms}</p>
 				<p class="text-sm md:text-base">Лифт: {data.object.elevator ? 'Есть' : 'Нет'}</p>
-				<p class="text-base md:text-lg">{@html data.object.description}</p>
-
-				<button class="variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded" button on:click={() => {
+				<button class="variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded mt-10 mb-10" button on:click={() => {
   console.log("Opening modal with object name:", data.object.name);
   modalStack.open('feedback', { objectName: data.object.name });
 }}>
-				Заказать осмотр
-			</button>
+					Заказать осмотр
+				</button>
+				<div class="mt-115">
+				<p class="text-base md:text-lg mt-110">{@html data.object.description}</p>
+				<iframe
+					width="400"
+					height="400"
+					title="Map"
+					margin-top="115px"
+					frameborder="0"
+					scrolling="no"
+					marginheight="0"
+					marginwidth="0"
+					src="https://maps.google.com/maps?q={data.object.location.lat},{data.object.location
+			.lon}&z=12&amp;output=embed"
+				/>
 
+</div>
 			</div>
 		</div>
 	{:else}
@@ -51,18 +64,8 @@
 <hr />
 
 <section class="center">
-	<h2>Come visit us!</h2>
-	<iframe
-		width="400"
-		height="400"
-		title="Map"
-		frameborder="0"
-		scrolling="no"
-		marginheight="0"
-		marginwidth="0"
-		src="https://maps.google.com/maps?q={data.object.location.lat},{data.object.location
-			.lon}&z=12&amp;output=embed"
-	/>
+
+
 </section>
 
 <style>

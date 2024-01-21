@@ -32,7 +32,14 @@ const query = `
       restoraunts
       playground
       tv
+      location {
+        lat
+        lon
+      }
       key
+      description {
+        json
+      }
       internet
       altPhoto {
         url(transform: {

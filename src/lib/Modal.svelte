@@ -17,12 +17,16 @@
         {#if modalItem.type === 'feedback'}
           <FeedbackForm objectName={modalItem.data.objectName || ''} />
         {:else if modalItem.type === 'objectCard'}
-          <ObjectCardModal object={modalItem.data} />
+          <ObjectCardModal object={modalItem.data.object} />
+
 
         {:else if modalItem.type === 'imageView'}
-<div class="image-viewer flex justify-center items-center">
-          <ImageViewer imageUrl={modalItem.data.imageUrl} />
+          <div class="modal-overlay">
+<div class="image-viewer modal-window-full-image flex justify-center items-center">
+  <ImageViewer imageUrl={modalItem.data.imageUrl} images={modalItem.data.images} currentIndex={modalItem.data.currentIndex} />
+
 </div>
+          </div>
         {/if}
         <button class="close-button text-gray-700 hover:text-gray-900">
         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" on:click={closeModal}>
@@ -49,7 +53,7 @@
         position: absolute;
         margin: auto;
 
-        border-radius: 8px;
+        border-radius: 18px;
         z-index: 1001;
         /* Do not set width here if you want different widths for different modals */
     }
@@ -58,6 +62,7 @@
         position: absolute;
         top: 1rem;
         right: 1rem;
+        color: black;
         /* Rest of your styles for close button */
     }
         .modal-window-full-image {

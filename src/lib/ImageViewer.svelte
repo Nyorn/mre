@@ -1,28 +1,41 @@
 <script>
   export let imageUrl;
+  export let images = [];
+  export let currentIndex;
 
-  // Логируем URL изображения при его изменении
-  $: if (imageUrl) {
-    console.log("ImageViewer imageUrl:", imageUrl);
+  $: if (images.length > 0 && typeof currentIndex === 'number') {
+    imageUrl = images[currentIndex];
+  }
+
+  function goToNextImage() {
+    currentIndex = (currentIndex + 1) % images.length;
+  }
+
+  function goToPreviousImage() {
+    currentIndex = (currentIndex - 1 + images.length) % images.length;
   }
 </script>
 
-<!-- In ImageViewer.svelte, check for imageUrl before rendering -->
 {#if imageUrl}
   <div class="p-4">
+    <button on:click={goToPreviousImage}>Previous</button>
     <img src={imageUrl} alt="Full Size Image" class="max-w-full h-auto mx-auto" />
+    <button on:click={goToNextImage}>Next</button>
   </div>
 {:else}
   <p>No image URL provided.</p>
 {/if}
 
 
+
 <style>
     .image-viewer img {
-        max-width: 90%;
-        max-height: 80vh;
+
         object-fit: contain;
         z-index: 1005;
         position: relative;
+    }
+    .image-viewer button {
+      z-index: 1005;
     }
 </style>

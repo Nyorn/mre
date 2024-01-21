@@ -118,18 +118,23 @@
 <!-- Остальная часть кода остаётся без изменений -->
 
 
-<Header />
+
 <FilterBar on:filter={handleFilter} on:open-full-filters={openFullFilters} />
 {#if showModal}
   <FullFilterModal showModal={showModal} on:full-filter={handleFullFilter}/>
 {/if}
 
-<section class="max-w-[var(--max-width)] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+<section class="max-w-[var(--max-width)] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4  gap-8">
   {#each filteredData as object}
     <Card object={object} />
   {/each}
 </section>
 
 <style>
-    /* Если у вас есть дополнительные глобальные стили, вы можете оставить их здесь */
+    section {
+        display: grid;
+
+        gap: 30px;
+        padding: 10px;
+    }
 </style>

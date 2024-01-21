@@ -22,43 +22,45 @@
     elemCarousel.scroll(elemCarousel.clientWidth * index, 0);
   }
   // In Carousel.svelte, update the openFullSizeImage function to pass the correct data structure
-  function openFullSizeImage(imageUrl) {
+  function openFullSizeImage(imageUrl, index) {
     console.log("Opening image with URL:", imageUrl);
-    // The data structure should match what Modal.svelte expects for 'imageView' type
-    modalStack.open('imageView', { imageUrl });
+    modalStack.open('imageView', { imageUrl, images, currentIndex: index });
   }
+
 
 </script>
 
 
-<div class="card p-4 grid grid-cols-[auto_1fr_auto] gap-4 items-center">
-  <!-- Button: Left -->
-  <button type="button" class="btn-icon variant-filled" on:click={carouselLeft}>
-    <i class="fa-solid fa-arrow-left" />
+<!-- Контейнер карусели -->
+<div class="carousel">
+  <!-- Кнопка: Влево -->
+  <button type="button" class="carousel-button left" on:click={carouselLeft}>
+    <i class="fa-solid fa-arrow-left arrow-icon" />
   </button>
-  <!-- Full Images -->
-  <div bind:this={elemCarousel} class="snap-x snap-mandatory scroll-smooth carousel-container">
-    {#each images as image}
+  <!-- Главные изображения -->
+  <div bind:this={elemCarousel} class="carousel-container">
+    {#each images as image, i (image)}
       <img
-        class="snap-center w-[1024px] rounded-container-token carousel-image"
+        class="carousel-image"
         src={image}
         alt="Image"
         loading="lazy"
-        on:click={() => openFullSizeImage(image)}
+        on:click={() => openFullSizeImage(image, i)}
       />
     {/each}
   </div>
-  <!-- Button: Right -->
-  <button type="button" class="btn-icon variant-filled" on:click={carouselRight}>
-    <i class="fa-solid fa-arrow-right" />
+  <!-- Кнопка: Вправо -->
+  <button type="button" class="carousel-button right" on:click={carouselRight}>
+    <i class="fa-solid fa-arrow-right arrow-icon" />
   </button>
 </div>
 
-<div class="card p-4 grid grid-cols-6 gap-4">
+<!-- Миниатюры -->
+<div class="thumbnails">
   {#each images as image, i}
-    <button type="button" on:click={() => carouselThumbnail(i)}>
+    <button type="button" class="thumbnail-button" on:click={() => carouselThumbnail(i)}>
       <img
-        class="rounded-container-token"
+        class="thumbnail-image"
         src={image}
         alt="Thumbnail"
         loading="lazy"
@@ -67,22 +69,91 @@
   {/each}
 </div>
 
+
+
 <style>
+    .carousel {
+        position: relative;
+    }
+
+    .carousel-button {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background-color: rgba(0, 0, 0, 0.5); /* Темный полупрозрачный фон */
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+    }
+
+    .arrow-icon {
+        color: #fff; /* Белый цвет стрелки */
+
+    }
+
+    .carousel-button.left {
+        left: 10px;
+    }
+
+    .carousel-button.right {
+        right: 10px;
+    }
+
     .carousel-container {
         display: flex;
-        overflow-x: hidden;
+        overflow-x: scroll;
         scroll-snap-type: x mandatory;
-        width: 100%;
         margin: 0 auto;
-
-
+        scroll-behavior: smooth;
     }
 
     .carousel-image {
-        flex: 0 0 100%;
+        flex: 0 0 auto;
         scroll-snap-align: start;
-       width: 100%;
+        width: 100%;
+        height: 800px; /* Увеличенная высота */
+        object-fit: cover;
+        border-radius: 10px;
     }
 
+    .thumbnails {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        overflow-y: auto;
+        gap: 10px;
+        padding: 10px 0;
+        height: 220px;
+        grid-auto-rows: 100px;
+    }
+
+    .thumbnail-button {
+        border: none;
+        background: none;
+        padding: 0;
+        cursor: pointer;
+    }
+
+    .thumbnail-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 10px; /* Скругленные углы */
+
+    }
+
+    @media (max-width: 768px) {
+        .carousel-image {
+            height: 250px;
+        }
+    }
 </style>
+
+
+
 
