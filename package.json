@@ -14,6 +14,7 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "@sveltejs/adapter-netlify": "^4.1.0",
     "@sveltejs/adapter-static": "^3.0.1",
     "autoprefixer": "^10.4.16",
     "contentful-import": "^9.4.8",

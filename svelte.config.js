@@ -1,12 +1,9 @@
-import adapter from '@sveltejs/adapter-static';
+import netlify from '@sveltejs/adapter-netlify';
 
 const config = {
 	kit: {
-		adapter: adapter({
-			pages: 'build',
-			assets: 'build',
-			fallback: '200.html'
-		})
+		adapter: netlify(), // Используйте адаптер Netlify
+		// Оставьте остальные конфигурации как есть, если они вам нужны
 	}
 };
 
