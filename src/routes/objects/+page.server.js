@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit'
-import contentfulFetch from '$lib/contentful-fetch'
+import { contentfulFetch } from '$lib/contentful-fetch';
 
 const query = `
 {
@@ -60,19 +60,22 @@ const query = `
 `
 
 export async function load() {
-  const response = await contentfulFetch(query)
+  console.log("Начало загрузки данных из Contentful");
 
-  if (!response.ok) {
-    throw error(response.status, {
-      message: response.statusText,
-    })
-  }
-  console.log(response); // Логирование ответа от Contentful
-  const { data } = await response.json()
-  console.log(data);
-  const { items } = data.objectCollection
+  try {
+    const response = await contentfulFetch(query);
+    console.log("Данные получены от Contentful:", JSON.stringify(response, null, 2));
 
-  return {
-    objects: items,
+    if (!response.ok || !response.data || !response.data.objectCollection) {
+      throw new Error('Ответ не содержит коллекции объектов');
+    }
+
+    const { items } = response.data.objectCollection;
+    console.log("Полученные элементы из коллекции объектов:", items);
+
+    return { objects: items };
+  } catch (e) {
+    console.error("Ошибка в функции load:", e);
+    throw error(500, 'Внутренняя ошибка сервера');
   }
 }

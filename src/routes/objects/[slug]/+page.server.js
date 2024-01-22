@@ -1,13 +1,13 @@
 import { error } from '@sveltejs/kit'
 import { documentToHtmlString } from '@contentful/rich-text-html-renderer'
-import contentfulFetch from '$lib/contentful-fetch'
+import { contentfulFetch } from '$lib/contentful-fetch';
 
 
 export async function load({ params }) {
   console.log("Slug in slug.server.js:", params.slug);
   const query = `
   {
-    objectCollection(where: {slug:"${params.slug}"}) {
+       objectCollection(where: {slug: "${params.slug}"}) {
       items {
       name
       location {
@@ -56,26 +56,27 @@ export async function load({ params }) {
       }
     }
   }
-  `
-
-  const response = await contentfulFetch(query)
-  console.log("Response status:", response.ok);
+  `;
+  const response = await contentfulFetch(query);
+  console.log("Обработанный ответ от Contentful:", response);
 
   if (!response.ok) {
-    throw error(404, {
-      message: response.statusText,
-    })
+    console.error("Ошибка HTTP запроса:", response.status, response.statusText, response.error);
+    throw error(response.status || 500, {
+      message: response.statusText || 'Ошибка загрузки данных'
+    });
   }
 
-  const { data } = await response.json()
-  console.log("Data:", data);
-  const { items } = data.objectCollection
+  if (!response.data || !response.data.objectCollection || !response.data.objectCollection.items.length) {
+    console.error("Ответ от Contentful не содержит данных:", response.data);
+    throw error(404, 'Данные не найдены');
+  }
 
-  const objectData = items[0]
-  // convert description to HTML
-  objectData.description = documentToHtmlString(objectData.description.json)
+  const objectData = response.data.objectCollection.items[0];
+  objectData.description = documentToHtmlString(objectData.description.json);
 
   return {
-    object: data.objectCollection.items[0], // Проверьте, что такой доступ к данным корректен
-  }
+    object: objectData,
+  };
 }
+
