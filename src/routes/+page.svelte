@@ -49,7 +49,7 @@
 </script>
 
 <svelte:head>
-	<script src="https://unpkg.com/three@0.140.2/build/three.min.js"></script>
+
 	<script src="/splide-shader-carousel.min.js" defer></script>
 </svelte:head>
 
