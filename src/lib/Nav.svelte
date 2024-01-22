@@ -1,6 +1,6 @@
 
 <script>
-	
+
 	let isDropdownOpen = false;
 
 	function toggleDropdown() {
