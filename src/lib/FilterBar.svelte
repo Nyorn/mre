@@ -91,7 +91,19 @@
   </select>
   <input type="number" placeholder="Кол-во спален" bind:value={bedrooms} class="p-2 bg-gray-800 text-white" />
   <div class="relative">
-    <button class="p-2 bg-gray-800" on:click={togglePriceFilter}>Цена</button>
+    <button class="p-2 bg-gray-800" on:click={togglePriceFilter}>
+      {#if minPrice || maxPrice}
+        Цена:<br>
+        {#if minPrice}
+          мин - {minPrice}€<br>
+        {/if}
+        {#if maxPrice}
+          макс - {maxPrice}€
+        {/if}
+      {:else}
+        Цена
+      {/if}
+    </button>
     {#if showPriceFilter}
       <div class="absolute left-0 mt-2 p-2 bg-gray-800 z-10">
         <input type="number" placeholder="Мин. цена" bind:value={minPrice} class="p-1 mb-1"/>
@@ -100,7 +112,20 @@
     {/if}
   </div>
   <div class="relative">
-    <button class="p-2 bg-gray-800" on:click={toggleAreaFilter}>Площадь</button>
+    <button class="p-2 bg-gray-800" on:click={toggleAreaFilter}>
+      {#if minArea || maxArea}
+        Площадь:<br>
+        {#if minArea}
+          мин - {minArea}м²<br>
+        {/if}
+        {#if maxArea}
+          макс - {maxArea}м²
+        {/if}
+      {:else}
+        Площадь
+      {/if}
+    </button>
+
     {#if showAreaFilter}
       <div class="absolute left-0 mt-2 p-2 bg-gray-800 z-10">
         <input type="number" placeholder="Мин. площадь" bind:value={minArea} class="p-1 mb-1"/>
@@ -109,25 +134,67 @@
     {/if}
   </div>
   <div class="relative">
-    <button class="p-2 bg-gray-800" on:click={toggleFloorFilter}>Этаж</button>
+    <button class="p-2 bg-gray-800" on:click={toggleFloorFilter}>
+      {#if minFloor || maxFloorValue}
+        Этаж:<br>
+        {#if minFloor}
+          мин - {minFloor}<br>
+        {/if}
+        {#if maxFloorValue}
+          макс - {maxFloorValue}
+        {/if}
+      {:else}
+        Этаж
+      {/if}
+    </button>
+
     {#if showFloorFilter}
       <div class="absolute left-0 mt-2 p-2 bg-gray-800 z-10 flex flex-col">
         <input type="number" placeholder="Мин. этаж" bind:value={minFloor} class="p-1 mb-1 bg-gray-800 text-white"/>
         <input type="number" placeholder="Макс. этаж" bind:value={maxFloorValue} class="p-1 bg-gray-800 text-white"/>
       </div>
     {/if}
-
+  </div>
 
   <button on:click={applyFilters}>Применить фильтры</button>
   <button on:click={openFullFilters}>Полные фильтры</button>
   <button on:click={resetFilters}>Сбросить фильтры</button>
 </div>
-</div>
+
 {/if}
 <style>
-
     .filter-bar input, .filter-bar select {
         background-color: #051518;
         color: white;
     }
+
+    .filter-bar button {
+        height: 60px; /* Увеличенная высота */
+        width: 120px; /* Уменьшенная ширина */
+        margin-left: 10px; /* Отступ слева */
+        padding: 5px; /* Внутренний отступ */
+        white-space: normal; /* Перенос текста на новую строку */
+        text-align: center; /* Центрирование текста */
+    }
+
+    @media (max-width: 1024px) {
+        /* Скрытие поля фильтра для спален, площади и этажа на планшетах */
+        .filter-bar input[type="number"], .filter-bar .relative {
+            display: none;
+        }
+    }
+
+    @media (max-width: 480px) {
+        /* Мобильная версия */
+        .filter-bar {
+            flex-direction: column; /* Столбцовое расположение элементов */
+            align-items: center; /* Центрирование элементов */
+        }
+
+        .filter-bar select, .filter-bar button {
+            width: 100%; /* Ширина элементов на всю ширину контейнера */
+        }
+    }
 </style>
+
+

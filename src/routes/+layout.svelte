@@ -5,6 +5,7 @@
   import FeedbackModal from '$lib/FeedbackModal.svelte';
   import { modalStack } from '$lib/store.js';
   import ScrollToTopButton from '../lib/ScrollToTopButton.svelte';
+  import '@fortawesome/fontawesome-free/css/all.css';
 
 
 
@@ -12,8 +13,11 @@
 
 </script>
 <svelte:head>
-<script src="https://unpkg.com/three@0.140.2/build/three.min.js"></script>
+
+
+  <script src="https://unpkg.com/three@0.140.2/build/three.min.js"></script>
 </svelte:head>
+
 <Nav />
 <main>
   <slot />

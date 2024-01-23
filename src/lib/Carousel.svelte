@@ -2,35 +2,41 @@
   import { modalStack } from '$lib/store.js';
   export let images = []; // Массив изображений, переданный как props
   let elemCarousel; // HTMLDivElement;
-
-
+  let currentIndex = 0; // Track the current index of the displayed image
+  let isLoading = images.map(() => true); // Массив для отслеживания загрузки изображений
+  $: loadedImages = images.map((image, index) => !isLoading[index]);
   function carouselLeft() {
-    const x = elemCarousel.scrollLeft === 0
-      ? elemCarousel.clientWidth * elemCarousel.childElementCount // loop
-      : elemCarousel.scrollLeft - elemCarousel.clientWidth; // step left
-    elemCarousel.scroll(x, 0);
+    currentIndex = (currentIndex - 1 + images.length) % images.length;
+    scrollToIndex(currentIndex);
   }
 
   function carouselRight() {
-    const x = elemCarousel.scrollLeft === elemCarousel.scrollWidth - elemCarousel.clientWidth
-      ? 0 // loop
-      : elemCarousel.scrollLeft + elemCarousel.clientWidth; // step right
-    elemCarousel.scroll(x, 0);
+    currentIndex = (currentIndex + 1) % images.length;
+    scrollToIndex(currentIndex);
   }
 
   function carouselThumbnail(index) {
-    elemCarousel.scroll(elemCarousel.clientWidth * index, 0);
+    currentIndex = index;
+    scrollToIndex(currentIndex);
   }
-  // In Carousel.svelte, update the openFullSizeImage function to pass the correct data structure
+
   function openFullSizeImage(imageUrl, index) {
-    console.log("Opening image with URL:", imageUrl);
+    console.log('Opening image with URL:', imageUrl);
     modalStack.open('imageView', { imageUrl, images, currentIndex: index });
   }
 
+  function scrollToIndex(index) {
+    const x = elemCarousel.clientWidth * index;
+    elemCarousel.scroll(x, 0);
+  }
 
+  function handleImageLoad(index) {
+    isLoading[index] = false; // Обновление состояния загрузки
+  }
 </script>
 
 
+<!-- Контейнер карусели -->
 <!-- Контейнер карусели -->
 <div class="carousel">
   <!-- Кнопка: Влево -->
@@ -40,13 +46,26 @@
   <!-- Главные изображения -->
   <div bind:this={elemCarousel} class="carousel-container">
     {#each images as image, i (image)}
-      <img
-        class="carousel-image"
-        src={image}
-        alt="Image"
-        loading="lazy"
-        on:click={() => openFullSizeImage(image, i)}
-      />
+      <div class="image-wrapper">
+        {#if isLoading[i]}
+          <div role="status" class="image-placeholder">
+            <div class="flex items-center justify-center w-full h-full bg-gray-300 rounded dark:bg-gray-700">
+              <svg class="w-10 h-10 text-gray-200 dark:text-gray-600" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 18">
+                <path d="M18 0H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2Zm-5.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm4.376 10.481A1 1 0 0 1 16 15H4a1 1 0 0 1-.895-1.447l3.5-7A1 1 0 0 1 7.468 6a.965.965 0 0 1 .9.5l2.775 4.757 1.546-1.887a1 1 0 0 1 1.618.1l2.541 4a1 1 0 0 1 .028 1.011Z"/>
+              </svg>
+            </div>
+          </div>
+        {/if}
+          <img
+            class="carousel-image {isLoading[i] ? 'hidden' : ''}"
+            src={image}
+            alt="Image {i}"
+            loading="lazy"
+            on:load={() => handleImageLoad(i)}
+            on:click={() => openFullSizeImage(image, i)}
+          />
+
+      </div>
     {/each}
   </div>
   <!-- Кнопка: Вправо -->
@@ -59,21 +78,70 @@
 <div class="thumbnails">
   {#each images as image, i}
     <button type="button" class="thumbnail-button" on:click={() => carouselThumbnail(i)}>
-      <img
-        class="thumbnail-image"
-        src={image}
-        alt="Thumbnail"
-        loading="lazy"
-      />
+      {#if isLoading[i]}
+        <div role="status" class="thumbnail-placeholder">
+          <div role="status" class="image-placeholder">
+            <div class="flex items-center justify-center w-full h-full bg-gray-300 rounded dark:bg-gray-700">
+              <svg class="w-10 h-10 text-gray-200 dark:text-gray-600" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 18">
+                <path d="M18 0H2a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2Zm-5.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm4.376 10.481A1 1 0 0 1 16 15H4a1 1 0 0 1-.895-1.447l3.5-7A1 1 0 0 1 7.468 6a.965.965 0 0 1 .9.5l2.775 4.757 1.546-1.887a1 1 0 0 1 1.618.1l2.541 4a1 1 0 0 1 .028 1.011Z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+      {:else}
+        <img
+          class="thumbnail-image"
+          src={image}
+          alt="Thumbnail {i}"
+          loading="lazy"
+          on:load={() => handleImageLoad(i)}
+        />
+      {/if}
     </button>
   {/each}
 </div>
 
 
 
+
 <style>
+    .hidden {
+        display: none;
+    }
+    .image-placeholder {
+        width: 100%; /* Match the width of the carousel images */
+        height: 100%; /* Match the height of the carousel images */
+        background-color: #E5E7EB; /* Light gray background */
+        border-radius: 10px; /* Rounded corners */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5000;
+    }
+    .thumbnail-placeholder {
+        width: 100px;
+        height: 100px;
+        background-color: #E5E7EB; /* Светло-серый фон */
+        border-radius: 10px; /* Скругленные углы */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .image-wrapper {
+        flex: none; /* Override any flex settings */
+        width: 100%; /* Each image wrapper should take the full width of the carousel container */
+        height: 800px; /* Height can be auto to maintain aspect ratio */
+        position: relative;
+    }
     .carousel {
         position: relative;
+    }
+
+    .carousel-image {
+        width: 100%;
+        height: auto; /* Adjust height to maintain aspect ratio */
+        object-fit: cover;
     }
 
     .carousel-button {
@@ -89,6 +157,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        z-index: 10;
 
     }
 
@@ -107,19 +176,18 @@
 
     .carousel-container {
         display: flex;
-        overflow-x: scroll;
+        overflow-x: hidden; /* Hide the overflow to prevent multiple images from showing */
         scroll-snap-type: x mandatory;
-        margin: 0 auto;
         scroll-behavior: smooth;
+        width: 100%; /* Ensure the container takes the full width of its parent */
     }
 
     .carousel-image {
-        flex: 0 0 auto;
-        scroll-snap-align: start;
-        width: 100%;
-        height: 800px; /* Увеличенная высота */
-        object-fit: cover;
-        border-radius: 10px;
+        max-width: 100%; /* Image should not exceed the width of the wrapper */
+        max-height: 800px; /* Optional: Limit the height to the viewport height */
+        object-fit: cover; /* Cover the area without stretching the image */
+        width: 100%; /* Uniform width */
+        min-height: 800px; /* Maintain aspect ratio */
     }
 
     .thumbnails {
