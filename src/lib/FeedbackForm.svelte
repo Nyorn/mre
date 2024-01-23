@@ -23,7 +23,7 @@
   }
 </script>
 
-<form on:submit={submitForm} class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate netlify>
+<form on:submit={submitForm} method="POST" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" netlify novalidate>
   <div class="input-container">
   <div class="field-container">
     <label for="name" class="block text-sm font-medium">Имя:</label>
