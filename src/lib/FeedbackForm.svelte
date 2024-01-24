@@ -29,7 +29,7 @@
   }
 </script>
 
-<form on:submit={submitForm} method="POST" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" netlify novalidate>
+<form on:submit={submitForm} method="POST" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
   <div class="input-container">
   <div class="field-container">
     <label for="name" class="block text-sm font-medium">Имя:</label>
@@ -51,7 +51,8 @@
     <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
   </div>
   </div>
-  <input type="hidden" bind:value={key} />
+  <input type="hidden" name="form-name" value="my-svelte-form" />
+  <input type="hidden" name="key" value={key} />
   <button type="submit" class="submit-button mt-10">Отправить</button>
 </form>
 <slot />
