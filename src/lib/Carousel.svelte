@@ -1,10 +1,14 @@
 <script>
+  import { onMount } from 'svelte';
   import { modalStack } from '$lib/store.js';
   export let images = []; // Массив изображений, переданный как props
   let elemCarousel; // HTMLDivElement;
   let currentIndex = 0; // Track the current index of the displayed image
   let isLoading = images.map(() => true); // Массив для отслеживания загрузки изображений
-  $: loadedImages = images.map((image, index) => !isLoading[index]);
+
+  onMount(() => {
+    initializeLoadingState();
+  });
   function carouselLeft() {
     currentIndex = (currentIndex - 1 + images.length) % images.length;
     scrollToIndex(currentIndex);
@@ -32,6 +36,26 @@
 
   function handleImageLoad(index) {
     isLoading[index] = false; // Обновление состояния загрузки
+  }
+  function initializeLoadingState() {
+    isLoading = images.map(() => true);
+    images.forEach((img, index) => loadImage(img, index));
+  }
+
+  function loadImage(url, index) {
+    const img = new Image();
+    img.src = url;
+    img.onload = () => {
+      isLoading[index] = false;
+    };
+    img.onerror = () => {
+      handleImageError(index);
+    };
+  }
+
+
+  function handleImageError(index) {
+    isLoading[index] = false; // Предполагаем, что изображение не загрузилось
   }
 </script>
 
@@ -63,6 +87,7 @@
             loading="lazy"
             on:load={() => handleImageLoad(i)}
             on:click={() => openFullSizeImage(image, i)}
+            on:error={() => handleImageError(i)}
           />
 
       </div>
@@ -117,7 +142,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 5000;
+
     }
     .thumbnail-placeholder {
         width: 100px;

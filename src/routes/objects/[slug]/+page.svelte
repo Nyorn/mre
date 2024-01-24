@@ -12,8 +12,11 @@
 	}
 
 	// Получение массива ссылок на изображения из galleryCollection
-	let imageUrls = data.object.galleryCollection.items.map(item => item.url);
 
+	let imageUrls = [];
+	$: if (data && data.object && data.object.galleryCollection) {
+		imageUrls = data.object.galleryCollection.items.map(item => item.url);
+	}
 </script>
 
 <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold my-4">{data.object.name}</h1>

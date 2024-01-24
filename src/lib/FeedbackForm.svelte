@@ -17,9 +17,15 @@
   async function submitForm(event) {
     event.preventDefault();
     if (Object.values(formErrors).some(error => error)) return;
-    const formData = { name, email, message, key };
-    console.log('Form Submitted:', formData);
-    // Здесь можно добавить логику отправки данных на сервер
+
+    // Копирование данных в скрытую форму
+    const hiddenForm = document.getElementById('netlify-hidden-form');
+    hiddenForm.name.value = name;
+    hiddenForm.email.value = email;
+    hiddenForm.message.value = message;
+
+    // Отправка скрытой формы
+    hiddenForm.submit();
   }
 </script>
 
