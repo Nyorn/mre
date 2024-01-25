@@ -1,7 +1,6 @@
-import { c as create_ssr_component, v as validate_component, a as add_attribute, e as escape, f as subscribe, b as each } from "../../chunks/ssr.js";
+import { c as create_ssr_component, a as add_attribute, e as escape, f as subscribe, d as each, v as validate_component } from "../../chunks/ssr.js";
 import { m as modalStack } from "../../chunks/Carousel.svelte_svelte_type_style_lang.js";
 import { F as FeedbackForm } from "../../chunks/FeedbackForm.js";
-import { C as Carousel } from "../../chunks/Carousel.js";
 import { documentToHtmlString } from "@contentful/rich-text-html-renderer";
 import "../../chunks/Modal.svelte_svelte_type_style_lang.js";
 import "canvas-confetti";
@@ -12,27 +11,27 @@ const css$6 = {
 };
 const ObjectCardModal = create_ssr_component(($$result, $$props, $$bindings, slots) => {
   let htmlDescription;
-  let images;
-  let { data } = $$props;
   let { object } = $$props;
+  console.log("Object in ObjectCardModal:", object);
   console.log(object);
-  if ($$props.data === void 0 && $$bindings.data && data !== void 0)
-    $$bindings.data(data);
   if ($$props.object === void 0 && $$bindings.object && object !== void 0)
     $$bindings.object(object);
   $$result.css.add(css$6);
-  htmlDescription = object && object.description ? documentToHtmlString(object.description.json) : "";
-  images = object.galleryCollection?.items.map((item) => item.url) || [];
-  return `${object ? `<div class="content svelte-8c70xz"><div class="object-card-modal grid grid-cols-1 md:grid-cols-2 gap-4 p-4 svelte-8c70xz"><div>${images.length > 0 ? `${validate_component(Carousel, "Carousel").$$render($$result, { images }, {}, {})}` : `<img${add_attribute("src", object.photo.url, 0)}${add_attribute("alt", object.photo.description, 0)} class="w-full h-auto rounded-lg">`}</div> <div class="p-4 space-y-4"><h1 class="text-2xl font-bold">${escape(object.name)}</h1> <p>Город: ${escape(object.city)}</p> <p>Площадь: ${escape(object.area)}</p> <p>Спальни: ${escape(object.bedrooms)}</p> <p>Этаж: ${escape(object.floor)} из ${escape(object.maxFloor)}</p> <p>Лифт: ${escape(object.elevator ? "Есть" : "Нет")}</p> <p>Цена: ${escape(object.price)}</p> <button class="variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded" data-svelte-h="svelte-dfu8al">Заказать осмотр</button> <p class="text-base md:text-lg"><!-- HTML_TAG_START -->${htmlDescription}<!-- HTML_TAG_END --></p> <iframe width="400" height="400" title="Map" margin-top="115px" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="${"https://maps.google.com/maps?q=" + escape(object.location.lat, true) + "," + escape(object.location.lon, true) + "&z=12&output=embed"}" class="svelte-8c70xz"></iframe> <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded shadow close-button svelte-8c70xz" data-svelte-h="svelte-uw4yt6">Закрыть</button></div></div></div>` : `<p data-svelte-h="svelte-10w9fw7">Данные объекта не доступны.</p>`}`;
+  htmlDescription = object?.description ? documentToHtmlString(object.description.json) : "";
+  return `${object ? `<div class="content svelte-8c70xz"><div class="object-card-modal grid grid-cols-1 md:grid-cols-2 gap-4 p-4 svelte-8c70xz"><div>${`<img${add_attribute("src", object.photo.url, 0)}${add_attribute("alt", object.photo.description, 0)} class="w-full h-auto rounded-lg">`}</div> <div class="p-4 space-y-4"><h1 class="text-2xl font-bold">${escape(object.name)}</h1> <p>Город: ${escape(object.city)}</p> <p>Площадь: ${escape(object.area)}</p> <p>Спальни: ${escape(object.bedrooms)}</p> <p>Этаж: ${escape(object.floor)} из ${escape(object.maxFloor)}</p> <p>Лифт: ${escape(object.elevator ? "Есть" : "Нет")}</p> <p>Цена: ${escape(object.price)}</p> <button class="variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded" data-svelte-h="svelte-dfu8al">Заказать осмотр</button> <p class="text-base md:text-lg"><!-- HTML_TAG_START -->${htmlDescription}<!-- HTML_TAG_END --></p> <iframe width="400" height="400" title="Map" margin-top="115px" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="${"https://maps.google.com/maps?q=" + escape(object.location.lat, true) + "," + escape(object.location.lon, true) + "&z=12&output=embed"}" class="svelte-8c70xz"></iframe> <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded shadow close-button svelte-8c70xz" data-svelte-h="svelte-uw4yt6">Закрыть</button></div></div></div>` : `<p data-svelte-h="svelte-10w9fw7">Данные объекта не доступны.</p>`}`;
 });
 const css$5 = {
   code: ".modal.svelte-yhxszn.svelte-yhxszn{top:0;left:0;width:100%;height:100%;background-color:rgba(0, 0, 0, 0.5);display:flex;align-items:center;justify-content:center;z-index:1000}.modal.svelte-yhxszn .image-container.svelte-yhxszn{position:relative;display:flex;align-items:center}.modal.svelte-yhxszn .image.svelte-yhxszn{max-width:100%;max-height:100%;object-fit:contain}.modal.svelte-yhxszn .previous.svelte-yhxszn,.modal.svelte-yhxszn .next.svelte-yhxszn{position:absolute;top:50%;transform:translateY(-50%);background:none;border:none;color:white;font-size:24px;cursor:pointer;padding:0 15px}.modal.svelte-yhxszn .previous.svelte-yhxszn{left:0}.modal.svelte-yhxszn .next.svelte-yhxszn{right:0}",
   map: null
 };
+let hidden = false;
 const ImageViewer = create_ssr_component(($$result, $$props, $$bindings, slots) => {
   let { imageUrl } = $$props;
   let { images = [] } = $$props;
   let { currentIndex } = $$props;
+  console.log("Current images array:", images);
+  console.log("Current index:", currentIndex);
+  console.log("Hidden state:", hidden);
   if ($$props.imageUrl === void 0 && $$bindings.imageUrl && imageUrl !== void 0)
     $$bindings.imageUrl(imageUrl);
   if ($$props.images === void 0 && $$bindings.images && images !== void 0)
@@ -41,7 +40,7 @@ const ImageViewer = create_ssr_component(($$result, $$props, $$bindings, slots) 
     $$bindings.currentIndex(currentIndex);
   $$result.css.add(css$5);
   {
-    if (images.length > 0 && typeof currentIndex === "number") {
+    if (images && images.length > 0 && typeof currentIndex === "number" && images[currentIndex]) {
       imageUrl = images[currentIndex];
     }
   }
@@ -64,7 +63,7 @@ const Modal = create_ssr_component(($$result, $$props, $$bindings, slots) => {
       },
       {},
       {}
-    )}` : `${modalItem.type === "objectCard" ? `${validate_component(ObjectCardModal, "ObjectCardModal").$$render($$result, { object: modalItem.data.object }, {}, {})}` : `${modalItem.type === "imageView" ? `<div class="modal-overlay svelte-n7tu5p"><div class="image-viewer modal-window-full-image flex justify-center items-center svelte-n7tu5p">${validate_component(ImageViewer, "ImageViewer").$$render(
+    )}` : `${modalItem.type === "objectCard" ? `${validate_component(ObjectCardModal, "ObjectCardModal").$$render($$result, { object: modalItem.data }, {}, {})}` : `${modalItem.type === "imageView" ? `<div class="modal-overlay svelte-n7tu5p"><div class="image-viewer modal-window-full-image flex justify-center items-center svelte-n7tu5p">${modalItem.data && modalItem.data.images && typeof modalItem.data.currentIndex === "number" ? `${validate_component(ImageViewer, "ImageViewer").$$render(
       $$result,
       {
         imageUrl: modalItem.data.imageUrl,
@@ -73,7 +72,7 @@ const Modal = create_ssr_component(($$result, $$props, $$bindings, slots) => {
       },
       {},
       {}
-    )}</div> </div>` : ``}`}`} <button class="close-button text-gray-700 hover:text-gray-900 svelte-n7tu5p"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button> </div>`;
+    )}` : `<p data-svelte-h="svelte-1i1xmgr">Error: Missing data for imageView</p>`}</div> </div>` : ``}`}`} <button class="close-button text-gray-700 hover:text-gray-900 svelte-n7tu5p"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button> </div>`;
   })}</div>` : ``}`;
 });
 const css$3 = {
@@ -111,7 +110,7 @@ const css = {
 };
 const Layout = create_ssr_component(($$result, $$props, $$bindings, slots) => {
   $$result.css.add(css);
-  return `${$$result.head += `<!-- HEAD_svelte-z94s3g_START --><script src="https://unpkg.com/three@0.140.2/build/three.min.js" data-svelte-h="svelte-1aqmw51"><\/script><!-- HEAD_svelte-z94s3g_END -->`, ""} ${validate_component(Nav, "Nav").$$render($$result, {}, {}, {})} <main>${slots.default ? slots.default({}) : ``} ${validate_component(Footer, "Footer").$$render($$result, {}, {}, {})} <form id="netlify-hidden-form" action="/" method="POST" data-netlify="true" style="display: none;" data-svelte-h="svelte-1i1hm10"><input type="text" name="name"> <input type="email" name="email"> <textarea name="message"></textarea> <input type="text" name="key"> <input type="hidden" name="form-name" value="my-svelte-form"></form></main> ${validate_component(Modal, "Modal").$$render($$result, {}, {}, {})} <button type="button" class="text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 shadow-lg shadow-teal-500/50 dark:shadow-lg dark:shadow-teal-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 fixed bottom-5 right-10" button data-svelte-h="svelte-1l8wl3v">Обратная связь</button> ${validate_component(ScrollToTopButton, "ScrollToTopButton").$$render($$result, {}, {}, {})}`;
+  return `${$$result.head += `<!-- HEAD_svelte-z94s3g_START --><script src="https://unpkg.com/three@0.140.2/build/three.min.js" data-svelte-h="svelte-1aqmw51"><\/script><!-- HEAD_svelte-z94s3g_END -->`, ""} ${validate_component(Nav, "Nav").$$render($$result, {}, {}, {})} <main>${slots.default ? slots.default({}) : ``} ${validate_component(Footer, "Footer").$$render($$result, {}, {}, {})}</main> ${validate_component(Modal, "Modal").$$render($$result, {}, {}, {})} <button type="button" class="text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 shadow-lg shadow-teal-500/50 dark:shadow-lg dark:shadow-teal-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 fixed bottom-5 right-10" button data-svelte-h="svelte-1l8wl3v">Обратная связь</button> ${validate_component(ScrollToTopButton, "ScrollToTopButton").$$render($$result, {}, {}, {})}`;
 });
 export {
   Layout as default

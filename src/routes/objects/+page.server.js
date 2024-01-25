@@ -46,14 +46,7 @@ const query = `
           format: AVIF
         })
        }
-      galleryCollection {
-        items {                  
-        url(transform: {
-          format: AVIF
-        })
-      
-        }
-      }
+     
       }
       }
 }

@@ -45,14 +45,7 @@ export async function load({ params }) {
         })
         description
         }
-    galleryCollection {
-        items {                  
-        url(transform: {
-          format: AVIF
-        })
-      
-        }
-      }
+    
       }
     }
   }

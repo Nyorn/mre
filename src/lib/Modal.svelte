@@ -22,15 +22,22 @@
         {#if modalItem.type === 'feedback'}
           <FeedbackForm objectName={modalItem.data.objectName || ''} />
         {:else if modalItem.type === 'objectCard'}
-          <ObjectCardModal object={modalItem.data.object} />
+          <ObjectCardModal object={modalItem.data} />
 
 
         {:else if modalItem.type === 'imageView'}
           <div class="modal-overlay">
-<div class="image-viewer modal-window-full-image flex justify-center items-center">
-  <ImageViewer imageUrl={modalItem.data.imageUrl} images={modalItem.data.images} currentIndex={modalItem.data.currentIndex} />
-
-</div>
+            <div class="image-viewer modal-window-full-image flex justify-center items-center">
+              {#if modalItem.data && modalItem.data.images && typeof modalItem.data.currentIndex === 'number'}
+                <ImageViewer
+                  imageUrl={modalItem.data.imageUrl}
+                  images={modalItem.data.images}
+                  currentIndex={modalItem.data.currentIndex}
+                />
+              {:else}
+                <p>Error: Missing data for imageView</p>
+              {/if}
+            </div>
           </div>
         {/if}
         <button class="close-button text-gray-700 hover:text-gray-900">

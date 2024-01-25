@@ -1,14 +1,38 @@
 <script>
   import { onMount } from 'svelte';
   import { modalStack } from '$lib/store.js';
-  export let images = []; // Массив изображений, переданный как props
+    export let slug; // Принимаем slug как
+    let images = []; // Массив изображений
+      let isLoading = images.map(() => true); // Массив для отслеживания загрузки изображений
   let elemCarousel; // HTMLDivElement;
   let currentIndex = 0; // Track the current index of the displayed image
-  let isLoading = images.map(() => true); // Массив для отслеживания загрузки изображений
+console.log("Slug:", slug);
 
-  onMount(() => {
-    initializeLoadingState();
-  });
+
+
+
+  onMount(async () => {
+     await loadGalleryData();
+     initializeLoadingState();
+   });
+
+
+  async function loadGalleryData() {
+     try {
+       const response = await fetch(`/api/getGallery?slug=${slug}`);
+       if (response.ok) {
+         const data = await response.json();
+         images = data.images;
+         isLoading = images.map(() => false); // Изменено на false
+           console.log("Loaded images:", images); // Добавьте лог для проверки загруженных изображений
+       } else {
+         console.error('Ошибка при получении данных галереи:', response);
+       }
+     } catch (error) {
+       console.error('Ошибка загрузки галереи:', error);
+     }
+   }
+
   function carouselLeft() {
     currentIndex = (currentIndex - 1 + images.length) % images.length;
     scrollToIndex(currentIndex);
@@ -25,8 +49,8 @@
   }
 
   function openFullSizeImage(imageUrl, index) {
-    console.log('Opening image with URL:', imageUrl);
-    modalStack.open('imageView', { imageUrl, images, currentIndex: index });
+      console.log('Opening full-size image with URL:', imageUrl, 'and index:', index);
+   modalStack.open('imageView', { imageUrl, images, currentIndex: index });
   }
 
   function scrollToIndex(index) {
@@ -57,6 +81,7 @@
   function handleImageError(index) {
     isLoading[index] = false; // Предполагаем, что изображение не загрузилось
   }
+
 </script>
 
 

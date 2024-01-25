@@ -23,7 +23,7 @@
 <section class="flex flex-col md:flex-row justify-center items-center md:items-start md:space-x-4 px-4 py-2">
 	{#if data && data.object}
 		<div class="w-full md:w-1/2">
-			<Carousel images={imageUrls} />
+		    <Carousel slug={data.object.slug} />
 
 
 		</div>

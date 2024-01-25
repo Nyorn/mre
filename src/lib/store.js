@@ -11,7 +11,6 @@ function createModalStack() {
     open: (type, data) => {
       console.log("Opening modal:", type, data);
       update(stack => {
-        // Add a new modal to the stack only if it's not already present
         if (!stack.some(modal => modal.type === type)) {
           return [...stack, { open: true, type, data }];
         }

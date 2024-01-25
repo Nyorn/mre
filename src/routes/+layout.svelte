@@ -22,13 +22,7 @@
 <main>
   <slot />
   <Footer />
-  <form id="netlify-hidden-form" action="/" method="POST" data-netlify="true" style="display: none;">
-    <input type="text" name="name" />
-    <input type="email" name="email" />
-    <textarea name="message"></textarea>
-    <input type="text" name="key" />
-    <input type="hidden" name="form-name" value="my-svelte-form" />
-  </form>
+
 
 </main>
 <Modal />

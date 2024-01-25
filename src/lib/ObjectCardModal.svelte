@@ -1,15 +1,37 @@
 <script>
+  import { onMount } from 'svelte';
   import Carousel from '$lib/Carousel.svelte';
   import { modalStack } from '$lib/store.js';
   import { documentToHtmlString } from '@contentful/rich-text-html-renderer';
   import { clickOutsideAction } from "svelte-legos";
 
-  export let data;
+
   export let object; // Данные текущего объекта
-  $: htmlDescription = object && object.description
-    ? documentToHtmlString(object.description.json)
+  console.log('Object in ObjectCardModal:', object);
+    $: htmlDescription = object?.description
+      ? documentToHtmlString(object.description.json)
     : '';
-  $: images = object.galleryCollection?.items.map(item => item.url) || [];
+
+let images = [];
+  let isGalleryLoaded = false;
+
+   onMount(async () => {
+    if (object && object.slug) {
+        try {
+          const response = await fetch(`/api/getGallery?slug=${object.slug}`);
+          if (response.ok) {
+            const data = await response.json();
+            images = data.images;
+            isGalleryLoaded = true;
+          } else {
+              console.error("Slug is missing in the object");
+            console.error('Ошибка при получении данных галереи:', response);
+          }
+        } catch (error) {
+          console.error('Ошибка загрузки галереи:', error);
+        }
+      }
+    });
 
   function closeModal() {
     modalStack.close();
@@ -31,11 +53,11 @@
      <div class="object-card-modal grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
         <div >
 
-          {#if images.length > 0}
-            <Carousel {images} />
-          {:else}
-            <img src={object.photo.url} alt={object.photo.description} class="w-full h-auto rounded-lg" />
-          {/if}
+             {#if isGalleryLoaded && images.length > 0}
+                 <Carousel slug={object.slug} />
+             {:else}
+                 <img src={object.photo.url} alt={object.photo.description} class="w-full h-auto rounded-lg" />
+             {/if}
         </div>
         <div class="p-4 space-y-4">
           <h1 class="text-2xl font-bold">{object.name}</h1>
@@ -124,7 +146,3 @@
         }
     }
 </style>
-
-
-
-

@@ -1,14 +1,29 @@
 <script>
   import { clickOutsideAction } from "svelte-legos";
   import { modalStack } from '$lib/store.js';
+  import { onMount } from 'svelte';
   export let imageUrl;
   export let images = [];
   export let currentIndex;
 
-  $: if (images.length > 0 && typeof currentIndex === 'number') {
+onMount(() => {
+console.log('Received imageUrl:', imageUrl);
+  console.log('Received images:', images);
+  console.log('Received currentIndex:', currentIndex);
+  if (images.length > 0 && typeof currentIndex === 'number') {
+    imageUrl = images[currentIndex];
+  }
+});
+
+
+  $: if (images && images.length > 0 && typeof currentIndex === 'number' && images[currentIndex]) {
     imageUrl = images[currentIndex];
   }
   let hidden = false;
+  console.log('Current images array:', images);
+  console.log('Current index:', currentIndex);
+  console.log('Hidden state:', hidden);
+
 
   function handleClickOutside() {
     console.log("Click outside detected");

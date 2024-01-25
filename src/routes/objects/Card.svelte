@@ -1,16 +1,14 @@
 
 	<script>
 		export let object;
-
 		import {modalStack} from '$lib/store.js';
 		import Modal from '$lib/Modal.svelte'
 
-		function openModal() {
-		console.log('Открываем модальное окно для объекта:', object);
-			modalStack.open('objectCard', { object: object });
-
-
-		}
+	 function openModal() {
+	 console.log(object);
+        console.log('Открываем модальное окно для объекта:', object);
+    modalStack.open('objectCard', object);
+      }
 </script>
 
 	<figure class="card shadow-lg cursor-pointer ">
