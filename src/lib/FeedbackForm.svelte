@@ -18,6 +18,7 @@
     event.preventDefault();
     if (Object.values(formErrors).some(error => error)) return;
 
+<<<<<<< HEAD
     // Ваша логика после валидации, например, отображение сообщения о успешной отправке
     console.log('Форма валидирована и отправлена');
   }
@@ -25,6 +26,25 @@
 
 <form on:submit={submitForm} method="POST" action="https://formspree.io/f/xvoezbnz" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
   <!-- Убедитесь, что у каждого входного поля есть атрибут name -->
+=======
+    const staticForm = document.createElement('form');
+    staticForm.method = 'POST';
+    staticForm.action = '/static-form.html'; // Путь к вашей статической форме
+    staticForm.innerHTML = `
+      <input type="hidden" name="name" value="${name}" />
+      <input type="hidden" name="email" value="${email}" />
+      <textarea name="message">${message}</textarea>
+      <input type="hidden" name="key" value="${key}" />
+    `;
+    document.body.appendChild(staticForm);
+    staticForm.submit();
+
+    alert('Форма отправлена');
+  }
+</script>
+
+<form on:submit={submitForm} method="POST" action="/static-form.html" name="my-svelte-form" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate netlify>
+>>>>>>> c3fea5a7925b50930e20466f1f46015fb05df71a
   <div class="input-container">
     <div class="field-container">
       <label for="name" class="block text-sm font-medium">Имя:</label>
@@ -46,6 +66,11 @@
       <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
     </div>
   </div>
+<<<<<<< HEAD
+=======
+  </div>
+  <input type="hidden" name="my-svelte-form" value="my-svelte-form" />
+>>>>>>> c3fea5a7925b50930e20466f1f46015fb05df71a
   <input type="hidden" name="key" value={key} />
   <button type="submit" class="submit-button mt-10">Отправить</button>
 </form>
