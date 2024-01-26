@@ -18,25 +18,23 @@
     event.preventDefault();
     if (Object.values(formErrors).some(error => error)) return;
 
-    // Получаем доступ к статической форме
-    const staticForm = document.getElementById('hidden-netlify-form');
-    if (staticForm) {
-      // Устанавливаем значения для статической формы
-      staticForm.name.value = name;
-      staticForm.email.value = email;
-      staticForm.message.value = message;
-      staticForm.key.value = key;
+    const staticForm = document.createElement('form');
+    staticForm.method = 'POST';
+    staticForm.action = '/static-form.html'; // Путь к вашей статической форме
+    staticForm.innerHTML = `
+      <input type="hidden" name="name" value="${name}" />
+      <input type="hidden" name="email" value="${email}" />
+      <textarea name="message">${message}</textarea>
+      <input type="hidden" name="key" value="${key}" />
+    `;
+    document.body.appendChild(staticForm);
+    staticForm.submit();
 
-      // Отправляем статическую форму
-      staticForm.submit();
-      console.log('Статическая форма отправлена');
-    } else {
-      console.error('Статическая форма не найдена');
-    }
+    alert('Форма отправлена');
   }
 </script>
 
-<form name="my-svelte-form" on:submit={submitForm} method="POST" action="/hidden-form-page" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
+<form on:submit={submitForm} method="POST" action="/hidden-form-page" name="my-svelte-form" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
   <div class="input-container">
   <div class="field-container">
     <label for="name" class="block text-sm font-medium">Имя:</label>
