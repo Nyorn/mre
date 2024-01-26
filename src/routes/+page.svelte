@@ -75,7 +75,7 @@
 <InfoBlock />
 <FeedbackForm />
 
-<form id="netlify-hidden-form" name="my-svelte-form" action="./static-form.html" method="POST" data-netlify="true" style="display: none;" netlify>
+<form id="netlify-hidden-form" name="my-svelte-form" action="/static-form.html" method="POST" data-netlify="true" style="display: none;" netlify>
 	<input type="text" name="name" />
 	<input type="email" name="email" />
 	<textarea name="message"></textarea>
