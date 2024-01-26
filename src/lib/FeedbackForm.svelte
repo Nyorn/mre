@@ -1,30 +1,24 @@
 <script>
   export let objectName = '';
-  export let key = ''; // Экспортированный параметр key
+  export let key = '';
 
   let name = '';
   let email = '';
   let message = objectName ? `Осмотр объекта: ${objectName}` : '';
   let formErrors = {};
 
-  // Реактивная валидация полей
   $: formErrors.name = !name ? 'Имя обязательно.' : '';
-  $: formErrors.email = !email ? 'Email обязателен.' :
-    (!/\S+@\S+\.\S+/.test(email) ? 'Неверный формат email.' : '');
+  $: formErrors.email = !email ? 'Email обязателен.' : (!/\S+@\S+\.\S+/.test(email) ? 'Неверный формат email.' : '');
   $: formErrors.message = !message ? 'Сообщение обязательно.' : '';
 
-  // Функция отправки формы
-  async function submitForm(event) {
+  function submitForm(event) {
     event.preventDefault();
     if (Object.values(formErrors).some(error => error)) return;
-
-    // Ваша логика после валидации, например, отображение сообщения о успешной отправке
     console.log('Форма валидирована и отправлена');
   }
 </script>
 
 <form on:submit={submitForm} method="POST" action="https://formspree.io/f/xvoezbnz" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
-  <!-- Убедитесь, что у каждого входного поля есть атрибут name -->
   <div class="input-container">
     <div class="field-container">
       <label for="name" class="block text-sm font-medium">Имя:</label>
@@ -50,6 +44,7 @@
   <button type="submit" class="submit-button mt-10">Отправить</button>
 </form>
 <slot />
+
 
 <style>
     .feedback-form {
