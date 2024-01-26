@@ -20,7 +20,7 @@
 
     const staticForm = document.createElement('form');
     staticForm.method = 'POST';
-    staticForm.action = '/static-form.html'; // Путь к вашей статической форме
+    staticForm.action = './static-form.html'; // Путь к вашей статической форме
     staticForm.innerHTML = `
       <input type="hidden" name="name" value="${name}" />
       <input type="hidden" name="email" value="${email}" />
@@ -34,7 +34,7 @@
   }
 </script>
 
-<form on:submit={submitForm} method="POST" action="/static-form.html" name="my-svelte-form" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
+<form on:submit={submitForm} method="POST" action="./static-form.html" name="my-svelte-form" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate netlify>
   <div class="input-container">
   <div class="field-container">
     <label for="name" class="block text-sm font-medium">Имя:</label>
