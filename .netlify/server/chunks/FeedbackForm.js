@@ -19,16 +19,16 @@ const FeedbackForm = create_ssr_component(($$result, $$props, $$bindings, slots)
   formErrors.name = "Имя обязательно.";
   formErrors.email = "Email обязателен.";
   formErrors.message = !message ? "Сообщение обязательно." : "";
-  return `<form method="POST" action="/static-form.html" name="my-svelte-form" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700 svelte-1olcnvn" novalidate netlify><div class="input-container svelte-1olcnvn"><div class="field-container svelte-1olcnvn"><label for="name" class="block text-sm font-medium" data-svelte-h="svelte-vsqlxf">Имя:</label> <input id="name" type="text" class="input-style svelte-1olcnvn"${add_attribute("value", name, 0)}> <span class="${escape(
+  return `<form method="POST" action="https://formspree.io/f/xvoezbnz" class="feedback-form flex flex-col space-y-4 text-gray-700 svelte-1olcnvn" novalidate> <div class="input-container svelte-1olcnvn"><div class="field-container svelte-1olcnvn"><label for="name" class="block text-sm font-medium" data-svelte-h="svelte-vsqlxf">Имя:</label> <input id="name" type="text" name="name" class="input-style svelte-1olcnvn"${add_attribute("value", name, 0)}> <span class="${escape(
     null_to_empty(formErrors.name ? "error-message" : "error-message hidden"),
     true
-  ) + " svelte-1olcnvn"}">${escape(formErrors.name)}</span></div></div> <div class="input-container svelte-1olcnvn"><div class="field-container svelte-1olcnvn"><label for="email" class="block text-sm font-medium" data-svelte-h="svelte-1oxiyt5">Email:</label> <input id="email" type="email" class="input-style svelte-1olcnvn"${add_attribute("value", email, 0)}> <span class="${escape(
+  ) + " svelte-1olcnvn"}">${escape(formErrors.name)}</span></div></div> <div class="input-container svelte-1olcnvn"><div class="field-container svelte-1olcnvn"><label for="email" class="block text-sm font-medium" data-svelte-h="svelte-1oxiyt5">Email:</label> <input id="email" type="email" name="email" class="input-style svelte-1olcnvn"${add_attribute("value", email, 0)}> <span class="${escape(
     null_to_empty(formErrors.email ? "error-message" : "error-message hidden"),
     true
-  ) + " svelte-1olcnvn"}">${escape(formErrors.email)}</span></div></div> <div class="input-container svelte-1olcnvn"><div class="field-container mb-10 svelte-1olcnvn"><label for="message" class="block text-sm font-medium" data-svelte-h="svelte-gcu58k">Сообщение:</label> <textarea id="message" class="textarea-style svelte-1olcnvn">${escape(message || "")}</textarea> <span class="${escape(
+  ) + " svelte-1olcnvn"}">${escape(formErrors.email)}</span></div></div> <div class="input-container svelte-1olcnvn"><div class="field-container mb-10 svelte-1olcnvn"><label for="message" class="block text-sm font-medium" data-svelte-h="svelte-gcu58k">Сообщение:</label> <textarea id="message" name="message" class="textarea-style svelte-1olcnvn">${escape(message || "")}</textarea> <span class="${escape(
     null_to_empty(formErrors.message ? "error-message" : "error-message hidden"),
     true
-  ) + " svelte-1olcnvn"}">${escape(formErrors.message)}</span></div></div> <input type="hidden" name="my-svelte-form" value="my-svelte-form"> <input type="hidden" name="key"${add_attribute("value", key, 0)}> <button type="submit" class="submit-button mt-10 svelte-1olcnvn" data-svelte-h="svelte-jgvucx">Отправить</button></form> ${slots.default ? slots.default({}) : ``}`;
+  ) + " svelte-1olcnvn"}">${escape(formErrors.message)}</span></div></div> <input type="hidden" name="key"${add_attribute("value", key, 0)}> <button type="submit" class="submit-button mt-10 svelte-1olcnvn" data-svelte-h="svelte-jgvucx">Отправить</button></form> ${slots.default ? slots.default({}) : ``}`;
 });
 export {
   FeedbackForm as F

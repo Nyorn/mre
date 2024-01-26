@@ -18,45 +18,34 @@
     event.preventDefault();
     if (Object.values(formErrors).some(error => error)) return;
 
-    const staticForm = document.createElement('form');
-    staticForm.method = 'POST';
-    staticForm.action = '/static-form.html'; // Путь к вашей статической форме
-    staticForm.innerHTML = `
-      <input type="hidden" name="name" value="${name}" />
-      <input type="hidden" name="email" value="${email}" />
-      <textarea name="message">${message}</textarea>
-      <input type="hidden" name="key" value="${key}" />
-    `;
-    document.body.appendChild(staticForm);
-    staticForm.submit();
-
-    alert('Форма отправлена');
+    // Ваша логика после валидации, например, отображение сообщения о успешной отправке
+    console.log('Форма валидирована и отправлена');
   }
 </script>
 
-<form on:submit={submitForm} method="POST" action="/static-form.html" name="my-svelte-form" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate netlify>
+<form on:submit={submitForm} method="POST" action="https://formspree.io/f/xvoezbnz" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
+  <!-- Убедитесь, что у каждого входного поля есть атрибут name -->
   <div class="input-container">
-  <div class="field-container">
-    <label for="name" class="block text-sm font-medium">Имя:</label>
-    <input id="name" type="text" bind:value={name} class="input-style" />
-    <span class={formErrors.name ? 'error-message' : 'error-message hidden'}>{formErrors.name}</span>
-  </div>
-  </div>
-  <div class="input-container">
-  <div class="field-container">
-    <label for="email" class="block text-sm font-medium">Email:</label>
-    <input id="email" type="email" bind:value={email} class="input-style" />
-    <span class={formErrors.email ? 'error-message' : 'error-message hidden'}>{formErrors.email}</span>
-  </div>
+    <div class="field-container">
+      <label for="name" class="block text-sm font-medium">Имя:</label>
+      <input id="name" type="text" bind:value={name} name="name" class="input-style" />
+      <span class={formErrors.name ? 'error-message' : 'error-message hidden'}>{formErrors.name}</span>
+    </div>
   </div>
   <div class="input-container">
-  <div class="field-container mb-10">
-    <label for="message" class="block text-sm font-medium">Сообщение:</label>
-    <textarea id="message" bind:value={message} class="textarea-style"></textarea>
-    <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
+    <div class="field-container">
+      <label for="email" class="block text-sm font-medium">Email:</label>
+      <input id="email" type="email" bind:value={email} name="email" class="input-style" />
+      <span class={formErrors.email ? 'error-message' : 'error-message hidden'}>{formErrors.email}</span>
+    </div>
   </div>
+  <div class="input-container">
+    <div class="field-container mb-10">
+      <label for="message" class="block text-sm font-medium">Сообщение:</label>
+      <textarea id="message" bind:value={message} name="message" class="textarea-style"></textarea>
+      <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
+    </div>
   </div>
-  <input type="hidden" name="my-svelte-form" value="my-svelte-form" />
   <input type="hidden" name="key" value={key} />
   <button type="submit" class="submit-button mt-10">Отправить</button>
 </form>
