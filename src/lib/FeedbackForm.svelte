@@ -34,7 +34,7 @@
   }
 </script>
 
-<form on:submit={submitForm} method="POST" action="/" name="my-svelte-form" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
+<form on:submit={submitForm} method="POST" action="/static-form.html" name="my-svelte-form" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
   <div class="input-container">
   <div class="field-container">
     <label for="name" class="block text-sm font-medium">Имя:</label>
