@@ -126,7 +126,7 @@
       "_app/immutable/assets/fa-v4compatibility.BdHZVUy0.ttf"
     ],
     "css": [
-      "_app/immutable/assets/_layout.A1A0So_h.css",
+      "_app/immutable/assets/_layout.lIVAgEV6.css",
       "_app/immutable/assets/FeedbackForm.twUferqg.css"
     ],
     "file": "entries/pages/_layout.svelte.js",
@@ -163,6 +163,11 @@
     ],
     "isEntry": true,
     "src": "src/routes/api/getGallery/+server.js"
+  },
+  "src/routes/hidden-form-page/+page.server.js": {
+    "file": "entries/pages/hidden-form-page/_page.server.js",
+    "isEntry": true,
+    "src": "src/routes/hidden-form-page/+page.server.js"
   },
   "src/routes/objects/+page.server.js": {
     "file": "entries/pages/objects/_page.server.js",

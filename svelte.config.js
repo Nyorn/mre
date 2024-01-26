@@ -6,6 +6,7 @@ const config = {
 		prerender: {
 			entries: [
 				'/',
+				'/hidden-form-page',
 				'/objects',
 				'/objects/studiya-izida-palas',
 				'/objects/apartamenty-v-byala2',
@@ -27,7 +28,12 @@ const config = {
 				'/objects/vip-style',
 				'/objects/revierra-fort-1-line',
 				'/objects/dolche-vita-2'
-			]
+			],
+			handleHttpError: ({ path, referrer, message }) => {
+				console.log(`Error in path: ${path}, referrer: ${referrer}, message: ${message}`);
+				throw new Error(message); // Или обработайте ошибку по-своему
+			}
+
 		}
 	}
 };

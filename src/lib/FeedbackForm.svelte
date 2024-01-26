@@ -18,18 +18,25 @@
     event.preventDefault();
     if (Object.values(formErrors).some(error => error)) return;
 
-    // Копирование данных в скрытую форму
-    const hiddenForm = document.getElementById('netlify-hidden-form');
-    hiddenForm.name.value = name;
-    hiddenForm.email.value = email;
-    hiddenForm.message.value = message;
+    // Получаем доступ к статической форме
+    const staticForm = document.getElementById('hidden-netlify-form');
+    if (staticForm) {
+      // Устанавливаем значения для статической формы
+      staticForm.name.value = name;
+      staticForm.email.value = email;
+      staticForm.message.value = message;
+      staticForm.key.value = key;
 
-    // Отправка скрытой формы
-    hiddenForm.submit();
+      // Отправляем статическую форму
+      staticForm.submit();
+      console.log('Статическая форма отправлена');
+    } else {
+      console.error('Статическая форма не найдена');
+    }
   }
 </script>
 
-<form on:submit={submitForm} method="POST" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
+<form name="my-svelte-form" on:submit={submitForm} method="POST" action="/hidden-form-page" data-netlify="true" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
   <div class="input-container">
   <div class="field-container">
     <label for="name" class="block text-sm font-medium">Имя:</label>

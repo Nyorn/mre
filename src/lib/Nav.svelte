@@ -2,9 +2,14 @@
 <script>
 
 	let isDropdownOpen = false;
+	let isNavMenuOpen = false; // Состояние для меню навигации
 
 	function toggleDropdown() {
 		isDropdownOpen = !isDropdownOpen;
+	}
+
+	function toggleNavMenu() {
+		isNavMenuOpen = !isNavMenuOpen; // Переключение состояния меню
 	}
 </script>
 
@@ -66,14 +71,23 @@
 					</li>
 				</ul>
 			</div>
-			<button data-collapse-toggle="navbar-language" type="button" class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600" aria-controls="navbar-language" aria-expanded="false">
-				<span class="sr-only">Open main menu</span>
+				<button type="button" on:click={toggleNavMenu} class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600">
+					<span class="sr-only">Open main menu</span>
 				<svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
 					<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15"/>
 				</svg>
 			</button>
 		</div>
+			<div class="{isNavMenuOpen ? 'flex' : 'hidden'} flex-col md:hidden mobile-nav-menu">
+				<a href="/" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Главная</a>
+				<a href="/objects" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Каталог</a>
+				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100">О нас</a>
+				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Документы</a>
+				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Контакты</a>
+			</div>
+
 		<div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-language">
+
 			<ul class="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
 				<li>
 					<a href="/" class="block py-2 px-3 text-white bg-blue-700 rounded md:bg-transparent md:text-blue-700 md:p-0 md:dark:text-blue-500" aria-current="page">Главная</a>
@@ -93,6 +107,7 @@
 			</ul>
 		</div>
 	</div>
+		</div>
 </nav>
 <style>
 	nav {
@@ -114,6 +129,19 @@
 	.md:space-x-8 > :last-child {
 		margin-right: 2rem; /* Adjust the value as needed */
 	}
+	.mobile-nav-menu a {
+		color: white; /* Белый цвет текста для всех ссылок */
+		padding: 12px 16px; /* Увеличенный отступ для большего пространства */
+		display: block; /* Делает ссылки блочными элементами */
+		text-decoration: none; /* Убирает подчеркивание по умолчанию */
+		transition: all 0.3s ease; /* Плавный переход для эффектов наведения */
+	}
+
+	.mobile-nav-menu a:hover {
+		text-decoration: underline; /* Подчеркивание при наведении */
+		background-color: transparent; /* Прозрачный фон при наведении */
+	}
+
 	#navbar-language > ul > li:last-child {
 		margin-right: 2rem; /* Adjust the value as needed */
 	}
