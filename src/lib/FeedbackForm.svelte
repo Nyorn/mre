@@ -22,7 +22,7 @@
     submissionResponse = '';
 
     try {
-      const response = await fetch('https://formspree.io/f/xvoezbnz', {
+      const response = await fetch('https://usebasin.com/f/d51a8b9bb495', {
         method: 'POST',
         body: formData,
         headers: {
