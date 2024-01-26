@@ -18,7 +18,7 @@
   }
 </script>
 
-<form on:submit={submitForm} method="POST" action="https://formspree.io/f/xvoezbnz" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
+<form on:submit={submitForm} name="feedback-form" method="POST" action="https://usebasin.com/f/d51a8b9bb495" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
   <div class="input-container">
     <div class="field-container">
       <label for="name" class="block text-sm font-medium">Имя:</label>
