@@ -18,7 +18,7 @@
   },
   "_FeedbackForm.js": {
     "css": [
-      "_app/immutable/assets/FeedbackForm.twUferqg.css"
+      "_app/immutable/assets/FeedbackForm.Vq6Yx2Gg.css"
     ],
     "file": "chunks/FeedbackForm.js",
     "imports": [
@@ -26,7 +26,7 @@
     ]
   },
   "_FeedbackForm.svelte_svelte_type_style_lang.js": {
-    "file": "_app/immutable/assets/FeedbackForm.twUferqg.css",
+    "file": "_app/immutable/assets/FeedbackForm.Vq6Yx2Gg.css",
     "src": "_FeedbackForm.svelte_svelte_type_style_lang.js"
   },
   "_Modal.svelte_svelte_type_style_lang.js": {
@@ -127,7 +127,7 @@
     ],
     "css": [
       "_app/immutable/assets/_layout.lIVAgEV6.css",
-      "_app/immutable/assets/FeedbackForm.twUferqg.css"
+      "_app/immutable/assets/FeedbackForm.Vq6Yx2Gg.css"
     ],
     "file": "entries/pages/_layout.svelte.js",
     "imports": [
@@ -181,7 +181,7 @@
   "src/routes/objects/+page.svelte": {
     "css": [
       "_app/immutable/assets/_page.D2CS35mV.css",
-      "_app/immutable/assets/FeedbackForm.twUferqg.css"
+      "_app/immutable/assets/FeedbackForm.Vq6Yx2Gg.css"
     ],
     "file": "entries/pages/objects/_page.svelte.js",
     "imports": [

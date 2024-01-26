@@ -6,51 +6,76 @@
   let email = '';
   let message = objectName ? `Осмотр объекта: ${objectName}` : '';
   let formErrors = {};
+  let isSubmitting = false;
+  let submissionResponse = '';
 
   $: formErrors.name = !name ? 'Имя обязательно.' : '';
   $: formErrors.email = !email ? 'Email обязателен.' : (!/\S+@\S+\.\S+/.test(email) ? 'Неверный формат email.' : '');
   $: formErrors.message = !message ? 'Сообщение обязательно.' : '';
 
-  function submitForm(event) {
+  async function submitForm(event) {
     event.preventDefault();
     if (Object.values(formErrors).some(error => error)) return;
-    console.log('Форма валидирована и отправлена');
+
+    const formData = new FormData(event.target);
+    isSubmitting = true;
+    submissionResponse = '';
+
+    try {
+      const response = await fetch('https://formspree.io/f/xvoezbnz', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json'
+        },
+      });
+
+      if (response.ok) {
+        submissionResponse = 'Форма успешно отправлена.';
+        name = email = message = ''; // Очистка формы после успешной отправки
+      } else {
+        submissionResponse = 'Ошибка при отправке формы.';
+      }
+    } catch (error) {
+      submissionResponse = 'Ошибка сети при отправке формы.';
+    } finally {
+      isSubmitting = false;
+    }
   }
 </script>
-
-<form on:submit={submitForm} name="feedback-form" method="POST" action="https://usebasin.com/f/d51a8b9bb495" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
-  <div class="input-container">
-    <div class="field-container">
-      <label for="name" class="block text-sm font-medium">Имя:</label>
-      <input id="name" type="text" bind:value={name} name="name" class="input-style" />
-      <span class={formErrors.name ? 'error-message' : 'error-message hidden'}>{formErrors.name}</span>
+<form on:submit={submitForm} name="feedback-form" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
+    <div class="input-container">
+      <div class="field-container">
+        <label for="name" class="block text-sm font-medium">Имя:</label>
+        <input id="name" type="text" bind:value={name} name="name" class="input-style" />
+        <span class={formErrors.name ? 'error-message' : 'error-message hidden'}>{formErrors.name}</span>
+      </div>
     </div>
-  </div>
-  <div class="input-container">
-    <div class="field-container">
-      <label for="email" class="block text-sm font-medium">Email:</label>
-      <input id="email" type="email" bind:value={email} name="email" class="input-style" />
-      <span class={formErrors.email ? 'error-message' : 'error-message hidden'}>{formErrors.email}</span>
+    <div class="input-container">
+      <div class="field-container">
+        <label for="email" class="block text-sm font-medium">Email:</label>
+        <input id="email" type="email" bind:value={email} name="email" class="input-style" />
+        <span class={formErrors.email ? 'error-message' : 'error-message hidden'}>{formErrors.email}</span>
+      </div>
     </div>
-  </div>
-  <div class="input-container">
-    <div class="field-container mb-10">
-      <label for="message" class="block text-sm font-medium">Сообщение:</label>
-      <textarea id="message" bind:value={message} name="message" class="textarea-style"></textarea>
-      <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
+    <div class="input-container">
+      <div class="field-container mb-10">
+        <label for="message" class="block text-sm font-medium">Сообщение:</label>
+        <textarea id="message" bind:value={message} name="message" class="textarea-style"></textarea>
+        <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
+      </div>
     </div>
-  </div>
-  <input type="hidden" name="key" value={key} />
-  <button type="submit" class="submit-button mt-10">Отправить</button>
-</form>
-<slot />
+    <input type="hidden" name="key" value={key} />
+    <button type="submit" className="submit-button mt-10" disabled={isSubmitting}>{isSubmitting ? 'Отправка...' : 'Отправить'}</button>
+  </form>
+  <slot />
 
 
-<style>
+  <style>
     .feedback-form {
-        background: #2a2e35; /* Темный фон */
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5); /* Тень для объемности */
+    background: #2a2e35; /* Темный фон */
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5); /* Тень для объемности */
         padding: 40px;
         width: auto;
         max-width: 500px;
