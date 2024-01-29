@@ -1,5 +1,6 @@
 import { w as writable } from "./index2.js";
 const modalStack = createModalStack();
+const loading = writable(true);
 const isFullFilterVisible = writable(false);
 function createModalStack() {
   const { subscribe, update } = writable([]);
@@ -27,5 +28,6 @@ function createModalStack() {
 }
 export {
   isFullFilterVisible as i,
+  loading as l,
   modalStack as m
 };

@@ -3,7 +3,7 @@
 <script>
 	import Carousel from '$lib/Carousel.svelte';
 	import { modalStack } from '$lib/store.js'
-
+	import { onMount } from 'svelte';
 	export let data;
 	console.log("Data in slug.svelte:", data);
 
@@ -12,13 +12,31 @@
 	}
 
 	// Получение массива ссылок на изображения из galleryCollection
-
+	let title;
+	let description;
 	let imageUrls = [];
 	$: if (data && data.object && data.object.galleryCollection) {
 		imageUrls = data.object.galleryCollection.items.map(item => item.url);
 	}
-</script>
+	onMount(() => {
+		if (data && data.object) {
+			title = `Откройте для себя эти уникальные ${data.object.type} в ${data.object.city} | Sea Real Estate`;
+			description = `Ищете ${data.object.type} в ${data.object.city}? Обширный выбор недвижимости от Sea Real Estate. Охраняемые комплексы, бассейны, фитнес и многое другое`;
+			document.title = title;
+			document.querySelector('meta[name="description"]').setAttribute('content', description);
+		}
+	});
 
+</script>
+<svelte:head>
+
+
+	<title>{title}</title>
+	<meta name="description" content="{description}" />
+
+
+
+</svelte:head>
 <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold my-4">{data.object.name}</h1>
 <section class="flex flex-col md:flex-row justify-center items-center md:items-start md:space-x-4 px-4 py-2">
 	{#if data && data.object}

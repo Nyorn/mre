@@ -16,6 +16,8 @@
 		--theme-rounded-container: 4px;
 		::selection { @apply bg-primary-500/30; }
 	}
+	overflow-y: auto;
+	overflow-x: hidden;
 }
 
 h1,

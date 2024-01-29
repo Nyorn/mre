@@ -2563,8 +2563,25 @@ async function respond(request, options2, manifest, state) {
           });
         }
       }
-      if (DEV && state.before_handle)
-        ;
+      if (state.before_handle || state.emulator?.platform) {
+        let config = {};
+        let prerender = false;
+        if (route.endpoint) {
+          const node = await route.endpoint();
+          config = node.config ?? config;
+          prerender = node.prerender ?? prerender;
+        } else if (route.page) {
+          const nodes = await load_page_nodes(route.page, manifest);
+          config = get_page_config(nodes) ?? config;
+          prerender = get_option(nodes, "prerender") ?? false;
+        }
+        if (state.before_handle) {
+          state.before_handle(event, config, prerender);
+        }
+        if (state.emulator?.platform) {
+          event.platform = await state.emulator.platform({ config, prerender });
+        }
+      }
     }
     const { cookies, new_cookies, get_cookie_header, set_internal } = get_cookies(
       request,

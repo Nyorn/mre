@@ -8,7 +8,8 @@
     "preview": "vite preview",
     "lint": "prettier --check --plugin-search-dir=. .",
     "format": "prettier --write --plugin-search-dir=. .",
-    "setup": "node ./contentful/setup.js"
+    "setup": "node ./contentful/setup.js",
+    "postbuild": "node ./src/scripts/generate-sitemap.js"
   },
   "engines": {
     "node": ">=18"
@@ -48,6 +49,7 @@
     "svelte-fa": "^4.0.2",
     "svelte-forms-lib": "^2.0.1",
     "svelte-legos": "^0.2.2",
+    "sveltekit-sitemap": "^1.0.21",
     "three": "^0.160.0"
   }
 }

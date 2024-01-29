@@ -14,6 +14,7 @@ const query = `
       }     
       city
       area
+      type
       bedrooms
       floor
       maxFloor

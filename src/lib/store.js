@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 
 export const modalStack = createModalStack();
+export const loading = writable(true);
 export const isFullFilterVisible = writable(false);
 function createModalStack() {
   const { subscribe, update } = writable([]); // Ensure initial state is an empty array

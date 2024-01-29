@@ -3,14 +3,14 @@
   export let key = '';
 
   let name = '';
-  let email = '';
+  let phone = '+';
   let message = objectName ? `Осмотр объекта: ${objectName}` : '';
   let formErrors = {};
   let isSubmitting = false;
   let submissionResponse = '';
 
   $: formErrors.name = !name ? 'Имя обязательно.' : '';
-  $: formErrors.email = !email ? 'Email обязателен.' : (!/\S+@\S+\.\S+/.test(email) ? 'Неверный формат email.' : '');
+  $: formErrors.phone = !phone ? 'Телефон обязателен.' : (!/^\+\d{1,15}$/.test(phone) ? 'Неверный формат телефона.' : '');
   $: formErrors.message = !message ? 'Сообщение обязательно.' : '';
 
   async function submitForm(event) {
@@ -32,7 +32,7 @@
 
       if (response.ok) {
         submissionResponse = 'Форма успешно отправлена.';
-        name = email = message = ''; // Очистка формы после успешной отправки
+        name = phone = message = ''; // Очистка формы после успешной отправки
       } else {
         submissionResponse = 'Ошибка при отправке формы.';
       }
@@ -43,35 +43,37 @@
     }
   }
 </script>
+
 <form on:submit={submitForm} name="feedback-form" class="feedback-form flex flex-col space-y-4 text-gray-700" novalidate>
-    <div class="input-container">
-      <div class="field-container">
-        <label for="name" class="block text-sm font-medium">Имя:</label>
-        <input id="name" type="text" bind:value={name} name="name" class="input-style" />
-        <span class={formErrors.name ? 'error-message' : 'error-message hidden'}>{formErrors.name}</span>
-      </div>
+  <div class="input-container">
+    <div class="field-container">
+      <label for="name" class="block text-sm font-medium">Имя:</label>
+      <input id="name" type="text" bind:value={name} name="name" class="input-style" />
+      <span class={formErrors.name ? 'error-message' : 'error-message hidden'}>{formErrors.name}</span>
     </div>
-    <div class="input-container">
-      <div class="field-container">
-        <label for="email" class="block text-sm font-medium">Email:</label>
-        <input id="email" type="email" bind:value={email} name="email" class="input-style" />
-        <span class={formErrors.email ? 'error-message' : 'error-message hidden'}>{formErrors.email}</span>
-      </div>
+  </div>
+  <div class="input-container">
+    <div class="field-container">
+      <label for="phone" class="block text-sm font-medium">Телефон:</label>
+      <input id="phone" type="tel" bind:value={phone} name="phone" class="input-style" />
+      <span class={formErrors.phone ? 'error-message' : 'error-message hidden'}>{formErrors.phone}</span>
     </div>
-    <div class="input-container">
-      <div class="field-container mb-10">
-        <label for="message" class="block text-sm font-medium">Сообщение:</label>
-        <textarea id="message" bind:value={message} name="message" class="textarea-style"></textarea>
-        <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
-      </div>
+  </div>
+  <div class="input-container">
+    <div class="field-container mb-10">
+      <label for="message" class="block text-sm font-medium">Сообщение:</label>
+      <textarea id="message" bind:value={message} name="message" class="textarea-style"></textarea>
+      <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
     </div>
-    <input type="hidden" name="key" value={key} />
-    <button type="submit" className="submit-button mt-10" disabled={isSubmitting}>{isSubmitting ? 'Отправка...' : 'Отправить'}</button>
-  </form>
-  <slot />
+  </div>
+  <input type="hidden" name="key" value={key} />
+  <button type="submit" className="submit-button mt-10" disabled={isSubmitting}>{isSubmitting ? 'Отправка...' : 'Отправить'}</button>
+</form>
+<slot />
 
 
-  <style>
+
+<style>
     .feedback-form {
     background: #2a2e35; /* Темный фон */
     border-radius: 8px;

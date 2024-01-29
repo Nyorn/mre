@@ -5,14 +5,16 @@
   const dispatch = createEventDispatcher();
 
   export let showModal = false;
-
+  let activeFilters = [];
 
   let city = '';
+  let type = '';
   let price = undefined;
   let bedrooms = undefined;
   let elevator = false;
   let area = undefined;
   const cities = ['Бяла', 'Обзор', 'Равда', 'Солнечный берег', 'Святой Влас', 'Гавана Влас', 'Золотые пески'];
+  const types = ['Аппартамент', 'Мезонит', 'Дом', 'Гараж', 'Вилла'];
   let bathrooms = undefined;
   let pool = undefined;
   let parking = '';
@@ -44,6 +46,7 @@
   function applyFullFilters() {
     dispatch('full-filter', {
       city,
+      type,
       price: price || undefined,
       bedrooms: bedrooms || undefined,
       elevator: elevator || undefined, // Ensure elevator is undefined if not set
@@ -75,6 +78,7 @@
 
   function resetFullFilters() {
     city = '';
+    type = '';
     price = undefined;
     bedrooms = undefined;
     elevator = undefined;
@@ -102,6 +106,7 @@
 
     dispatch('full-filter', {
       city: '',
+      type: '',
       price: undefined,
       bedrooms: undefined,
       elevator: undefined,
@@ -130,11 +135,22 @@
     });
     close();
   }
+
+  function toggleFilter(filterName, value) {
+    if (value) {
+      if (!activeFilters.includes(filterName)) {
+        activeFilters.push(filterName);
+      }
+    } else {
+      activeFilters = activeFilters.filter(name => name !== filterName);
+    }
+  }
 </script>
 
 {#if showModal}
   <div class="modal">
     <div class="modal-content">
+      <button class="close-button" on:click={close}>&times;</button>
       <div class="filter-group">
         <div class="filter-item">
       <select bind:value={city}>
@@ -144,6 +160,15 @@
         {/each}
       </select>
         </div>
+        <div class="filter-item">
+          <select bind:value={type}>
+            <option value="">Выберите тип</option>
+            {#each types as typeOption}
+              <option value={typeOption}>{typeOption}</option>
+            {/each}
+          </select>
+        </div>
+
         <div class="filter-item">
           <input type="number" placeholder="Кол-во спален" bind:value={bedrooms} />
         </div>
@@ -262,6 +287,7 @@
         z-index: 1000;
     }
 
+
     .modal-content {
         background-color: rgb(var(--color-surface-900));
         color: #fff;
@@ -271,8 +297,18 @@
         max-width: 90%;
         max-height: 90vh;
         overflow-y: auto;
+        position: relative; /* Добавлено для позиционирования кнопки закрытия */
     }
-
+    .close-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        border: none;
+        background: transparent;
+        color: white;
+        font-size: 1.5em;
+        cursor: pointer;
+    }
     /* Стили для группировки элементов */
     .filter-group {
         display: flex;

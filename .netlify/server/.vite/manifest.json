@@ -29,11 +29,15 @@
     "file": "_app/immutable/assets/FeedbackForm.Vq6Yx2Gg.css",
     "src": "_FeedbackForm.svelte_svelte_type_style_lang.js"
   },
-  "_Modal.svelte_svelte_type_style_lang.js": {
+  "_Preloader.svelte_svelte_type_style_lang.js": {
+    "file": "_app/immutable/assets/Preloader.nWcanRQN.css",
+    "src": "_Preloader.svelte_svelte_type_style_lang.js"
+  },
+  "_Svg.svelte_svelte_type_style_lang.js": {
     "css": [
-      "_app/immutable/assets/Modal.PQLE4l0o.css"
+      "_app/immutable/assets/Svg.6cXoPQ5-.css"
     ],
-    "file": "chunks/Modal.svelte_svelte_type_style_lang.js",
+    "file": "chunks/Svg.svelte_svelte_type_style_lang.js",
     "imports": [
       "_index2.js"
     ]
@@ -126,15 +130,16 @@
       "_app/immutable/assets/fa-v4compatibility.BdHZVUy0.ttf"
     ],
     "css": [
-      "_app/immutable/assets/_layout.lIVAgEV6.css",
-      "_app/immutable/assets/FeedbackForm.Vq6Yx2Gg.css"
+      "_app/immutable/assets/_layout.dLUuJsvY.css",
+      "_app/immutable/assets/FeedbackForm.Vq6Yx2Gg.css",
+      "_app/immutable/assets/Preloader.nWcanRQN.css"
     ],
     "file": "entries/pages/_layout.svelte.js",
     "imports": [
       "_ssr.js",
       "_Carousel.svelte_svelte_type_style_lang.js",
       "_FeedbackForm.js",
-      "_Modal.svelte_svelte_type_style_lang.js"
+      "_Svg.svelte_svelte_type_style_lang.js"
     ],
     "isEntry": true,
     "src": "src/routes/+layout.svelte"
@@ -146,7 +151,8 @@
   },
   "src/routes/+page.svelte": {
     "css": [
-      "_app/immutable/assets/_page.6Sji2HrR.css"
+      "_app/immutable/assets/_page.jJDOV2Zt.css",
+      "_app/immutable/assets/Preloader.nWcanRQN.css"
     ],
     "file": "entries/pages/_page.svelte.js",
     "imports": [
@@ -156,6 +162,28 @@
     "isEntry": true,
     "src": "src/routes/+page.svelte"
   },
+  "src/routes/404/+page.svelte": {
+    "css": [
+      "_app/immutable/assets/_page.xjRr5EYH.css"
+    ],
+    "file": "entries/pages/404/_page.svelte.js",
+    "imports": [
+      "_ssr.js"
+    ],
+    "isEntry": true,
+    "src": "src/routes/404/+page.svelte"
+  },
+  "src/routes/about/+page.svelte": {
+    "css": [
+      "_app/immutable/assets/_page.inUEfQK0.css"
+    ],
+    "file": "entries/pages/about/_page.svelte.js",
+    "imports": [
+      "_ssr.js"
+    ],
+    "isEntry": true,
+    "src": "src/routes/about/+page.svelte"
+  },
   "src/routes/api/getGallery/+server.js": {
     "file": "entries/endpoints/api/getGallery/_server.js",
     "imports": [
@@ -164,10 +192,14 @@
     "isEntry": true,
     "src": "src/routes/api/getGallery/+server.js"
   },
-  "src/routes/hidden-form-page/+page.server.js": {
-    "file": "entries/pages/hidden-form-page/_page.server.js",
+  "src/routes/contacts/+page.svelte": {
+    "file": "entries/pages/contacts/_page.svelte.js",
+    "imports": [
+      "_ssr.js",
+      "_FeedbackForm.js"
+    ],
     "isEntry": true,
-    "src": "src/routes/hidden-form-page/+page.server.js"
+    "src": "src/routes/contacts/+page.svelte"
   },
   "src/routes/objects/+page.server.js": {
     "file": "entries/pages/objects/_page.server.js",
@@ -180,14 +212,14 @@
   },
   "src/routes/objects/+page.svelte": {
     "css": [
-      "_app/immutable/assets/_page.D2CS35mV.css",
+      "_app/immutable/assets/_page.KaqmCBiP.css",
       "_app/immutable/assets/FeedbackForm.Vq6Yx2Gg.css"
     ],
     "file": "entries/pages/objects/_page.svelte.js",
     "imports": [
       "_ssr.js",
       "_Carousel.svelte_svelte_type_style_lang.js",
-      "_Modal.svelte_svelte_type_style_lang.js"
+      "_Svg.svelte_svelte_type_style_lang.js"
     ],
     "isEntry": true,
     "src": "src/routes/objects/+page.svelte"

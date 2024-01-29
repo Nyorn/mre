@@ -3,16 +3,31 @@
   import Card from './Card.svelte';
   import FilterBar from '../../lib/FilterBar.svelte';
   import FullFilterModal from '../../lib/FullFilterModal.svelte';
+  import SortModal from '../../lib/SortModal.svelte';
+
+  import { onMount } from 'svelte';
 
   export let data;
+  let loading = true; // Переменная для контроля отображения прелоадера
+  let showSortModal = false;
   let showModal = false;
   let filteredData = data.objects; // Инициализация с полным списком объектов
   console.log("Данные объектов:", data.objects);
+  let sortOptions = {}; // Добавьте этот объект для хранения опций сортировки
+  let lastFilterOptions = {};
+  let loadedImagesCount = 0;
+  let totalImagesCount = data.objects.length;
 
+  function handleImageLoaded() {
+    loadedImagesCount++;
+    if (loadedImagesCount >= totalImagesCount) {
+      loading = false;
+    }
+  }
 
-
-  function handleFilter(event) {
-    const { city, price, bedrooms, elevator, area, bathrooms, pool, parking, fromBuilder, minPrice, maxPrice, minArea, maxArea, minFloor, maxFloorValue, heat, security, conserj, video, fitness, restoraunts, playground, tv, internet } = event.detail;
+  function handleFilter(event, sortOptions = {}) {
+    lastFilterOptions = event ? event.detail : lastFilterOptions;
+    const { city, price, type, bedrooms, elevator, area, bathrooms, pool, parking, fromBuilder, minPrice, maxPrice, minArea, maxArea, minFloor, maxFloorValue, heat, security, conserj, video, fitness, restoraunts, playground, tv, internet } = event.detail;
 
     console.log("Received filter event with details:", event.detail);
 
@@ -29,7 +44,7 @@
         (maxFloorValue === undefined || object.floor <= maxFloorValue)
 
       let matchesCity = !city || object.city === city;
-
+      let matchesType = !type || object.type === type;
       let matchesBedrooms = bedroomsNum === null || object.bedrooms === bedroomsNum;
       let matchesElevator = elevator === undefined || object.elevator === elevator;
 
@@ -49,6 +64,7 @@
 
       console.log(`Object ${object.name} filter match results:`, {
         matchesCity,
+        matchesType,
         matchesPrice,
         matchesBedrooms,
         matchesElevator,
@@ -71,6 +87,7 @@
       console.log(`Price filter value: ${priceNum}, Area filter value: ${areaNum}`);
       console.log(`Matches price: ${matchesPrice}, Matches area: ${matchesArea}`);
       return matchesCity &&
+        matchesType &&
         matchesPrice &&
         matchesBedrooms &&
         matchesElevator &&
@@ -93,15 +110,42 @@
       // return matchesCity && matchesPrice && matchesBedrooms && matchesElevator && matchesArea && matchesBathrooms && matchesPool && matchesParking && matchesHeating &&  matchesFloor;
     });
 
-    console.log("Filtered data:", filteredData);
+    filteredData.sort((a, b) => {
+      let result = 0;
+
+    });
+
+    applySorting(sortOptions);
+
+    console.log("Filtered and sorted data:", filteredData);
   }
 
 
+  function applySorting(sortOptions) {
+    filteredData.sort((a, b) => {
+      let result = 0;
 
+      if (sortOptions.price) {
+        result = sortOptions.price === 'asc' ? a.price - b.price : b.price - a.price;
+        if (result !== 0) return result;
+      }
+      if (sortOptions.area) {
+        // Убедитесь, что area является числом
+        let areaA = parseFloat(a.area);
+        let areaB = parseFloat(b.area);
+        result = sortOptions.area === 'asc' ? areaA - areaB : areaB - areaA;
+        if (result !== 0) return result;
+      }
+      if (sortOptions.floor) {
+        // Убедитесь, что floor является числом
+        let floorA = parseFloat(a.floor);
+        let floorB = parseFloat(b.floor);
+        result = sortOptions.floor === 'asc' ? floorA - floorB : floorB - floorA;
+      }
 
-
-
-
+      return result;
+    });
+  }
 
   function openFullFilters() {
     console.log("Received full filter event with details:", event.detail);
@@ -113,27 +157,69 @@
     console.log("Данные из FullFilterModal:", event.detail);
     handleFilter(event); // Повторное использование функции handleFilter для полной фильтрации
   }
+
+  function applySort(newSortOptions) {
+    sortOptions = newSortOptions;
+    handleFilter({ detail: lastFilterOptions }, sortOptions);
+  }
+
+  function handleSort(event) {
+    const newSortOptions = event.detail;
+    handleFilter({ detail: lastFilterOptions }, newSortOptions);
+  }
+
+
+  function onDataLoaded() {
+    loading = false; // Прячем прелоадер
+  }
+
+  onMount(() => {
+    if (document.readyState === 'complete') {
+      loading = false;
+    } else {
+      window.addEventListener('load', () => {
+        loading = false;
+      });
+    }
+
+    return () => {
+      loadedImagesCount = 0;
+      totalImagesCount = data.objects.length;
+      loading = true;
+    };
+  });
+
 </script>
-
-<!-- Остальная часть кода остаётся без изменений -->
-
+<svelte:head>
 
 
-<FilterBar on:filter={handleFilter} on:open-full-filters={openFullFilters} />
+  <title>Купить Квартиру в Обзоре, Бяле, Равде, Солнечном берегу, Золотых песках, Святом Власе | Sea Real Estate</title>
+
+  <meta name="description" content="Ищете квартиру в Обзоре, Бяле или Равде? Золотых песках, на Солнечном берегу или Святом Власе? Обширный выбор недвижимости от Sea Real Estate. Охраняемые комплексы, бассейны, фитнес и многое другое" />
+
+
+
+
+</svelte:head>
+
+
+
+<FilterBar on:filter={handleFilter} on:sort={handleSort} on:open-full-filters={openFullFilters} />
+<SortModal {showSortModal} {applySort} />
 {#if showModal}
   <FullFilterModal showModal={showModal} on:full-filter={handleFullFilter}/>
 {/if}
 
 <section class="max-w-[var(--max-width)] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4  gap-8">
   {#each filteredData as object}
-    <Card object={object} />
+    <Card object={object} on:loaded={handleImageLoaded}/>
   {/each}
 </section>
 
 <style>
     section {
         display: grid;
-
+        margin-top:50px;
         gap: 30px;
         padding: 10px;
     }

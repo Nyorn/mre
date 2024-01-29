@@ -16,6 +16,7 @@ export async function load({ params }) {
       }
       city
       area
+      type
       price
       floor
       maxFloor
