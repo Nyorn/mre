@@ -130,7 +130,7 @@
       "_app/immutable/assets/fa-v4compatibility.BdHZVUy0.ttf"
     ],
     "css": [
-      "_app/immutable/assets/_layout.dLUuJsvY.css",
+      "_app/immutable/assets/_layout.I9YN2RhT.css",
       "_app/immutable/assets/FeedbackForm.Vq6Yx2Gg.css",
       "_app/immutable/assets/Preloader.nWcanRQN.css"
     ],
@@ -151,7 +151,7 @@
   },
   "src/routes/+page.svelte": {
     "css": [
-      "_app/immutable/assets/_page.jJDOV2Zt.css",
+      "_app/immutable/assets/_page.7uOCZaFY.css",
       "_app/immutable/assets/Preloader.nWcanRQN.css"
     ],
     "file": "entries/pages/_page.svelte.js",

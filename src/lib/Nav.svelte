@@ -1,23 +1,37 @@
-
 <script>
+	import { onMount, onDestroy } from 'svelte';
 
+	let isNavMenuOpen = false;
 	let isDropdownOpen = false;
-	let isNavMenuOpen = false; // Состояние для меню навигации
+	let navMenu;
+
+	function toggleNavMenu(event) {
+		event.stopPropagation(); // Добавляем эту строку
+		console.log("Toggle nav menu");
+		isNavMenuOpen = !isNavMenuOpen;
+	}
 
 	function toggleDropdown() {
 		isDropdownOpen = !isDropdownOpen;
 	}
 
-	function toggleNavMenu() {
-		isNavMenuOpen = !isNavMenuOpen;
-		const menu = document.querySelector('.mobile-nav-menu');
-		if (isNavMenuOpen) {
-			menu.classList.remove('hidden');
-		} else {
-			menu.classList.add('hidden');
+	function handleClickOutside(event) {
+		if (navMenu && !navMenu.contains(event.target) && isNavMenuOpen) {
+			isNavMenuOpen = false;
 		}
 	}
 
+	onMount(() => {
+		if (typeof window !== 'undefined') {
+			window.addEventListener('click', handleClickOutside);
+		}
+	});
+
+	onDestroy(() => {
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('click', handleClickOutside);
+		}
+	});
 </script>
 
 <nav class="bg-white dark:bg-gray-900 w-full top-0 start-0 border-b border-gray-200 dark:border-gray-600">
@@ -77,14 +91,13 @@
 					</li>
 				</ul>
 			</div>
-				<button type="button" on:click={toggleNavMenu} class="inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600">
-					<span class="sr-only">Open main menu</span>
+				<button on:click={toggleNavMenu} class="hamburger inline-flex items-center p-2 w-10 h-10 justify-center text-sm text-gray-500 rounded-lg md:hidden focus:outline-none focus:ring-2 focus:ring-gray-200 dark:text-gray-400">					<span class="sr-only">Open main menu</span>
 				<svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 17 14">
 					<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 1h15M1 7h15M1 13h15"/>
 				</svg>
 			</button>
 		</div>
-			<div class="{isNavMenuOpen ? 'flex' : 'hidden'} flex-col md:hidden mobile-nav-menu">
+			<div bind:this={navMenu} class="{isNavMenuOpen ? 'flex' : 'hidden'} flex-col md:hidden mobile-nav-menu">
 				<a href="/" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Главная</a>
 				<a href="/objects" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Каталог</a>
 				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100">О нас</a>
@@ -92,7 +105,7 @@
 				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Контакты</a>
 			</div>
 
-		<div class="items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-language">
+		<div class="navmenu items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-language">
 
 			<ul class="flex flex-col font-medium p-4 md:p-0 mt-4 border border-gray-100 rounded-lg md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 ">
 				<li>
@@ -131,6 +144,12 @@
 	</div>
 </nav>
 <style>
+	.hidden {
+		display: none;
+	}
+	.flex {
+		display: flex;
+	}
 	nav {
    background-color: #030005;
 		min-height: 200px;
@@ -138,7 +157,13 @@
 	.logotype img {
 		position: relative; /* Для позиционирования псевдо-элементов */
 	}
+  .hamburger {
+		border:white 1px solid;
 
+	}
+	.hamburger:hover {
+		background-color: transparent;
+	}
 	.logotype::before,
 	.logotype::after {
 		content: '';
@@ -232,17 +257,15 @@ nav a:hover {
 		flex-direction: column; /* Elements arranged in a vertical order */
 		width: 100%; /* Menu width matches the parent block width */
 		position: absolute; /* Absolute positioning for dropdown effect */
-		top: 10%; /* Positioned right below the hamburger menu */
+		top: 20%; /* Positioned right below the hamburger menu */
 		left: 0; /* Aligned to the left */
-		background-color: #111827;
+		background-color: #030005;
 		z-index: 1000; /* Ensures the menu appears on top of other elements */
 		box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); /* Adds a slight shadow for depth */
 		border-top: 1px solid #f3f3f3; /* Adds a subtle border at the top */
 	}
 
-	.mobile-nav-menu.hidden {
-		display: none;
-	}
+
 
 	:root {
 		--anime-time: 8s;
@@ -341,8 +364,16 @@ nav a:hover {
 			margin-left: 0px;
 
 		}
-
+		@media (max-width: 400px) {
+		.contacts {
+			display: none;
+		}
+		}
 	}
 
-
+	@media (min-width: 768px) { /* или другой размер, соответствующий десктопной версии */
+		.navmenu {
+			display: flex !important; /* Принудительно задаем flex для десктопов */
+		}
+	}
 </style>

@@ -93,6 +93,8 @@
     min-height: 100vh;
     min-width: 100%;
         margin-top: 50px;
+        max-width: 100vw; /* Максимальная ширина контейнера равна ширине видимой области экрана */
+        overflow-x: hidden;
 
 
 
@@ -366,6 +368,9 @@
     .main__text-wrapper:after {
         display: none;
     }
+    .container{
+        min-height: 1200px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
+    }
 }
     @media (max-width: 768px) {
         .container{
@@ -378,8 +383,9 @@
         }
     }
     @media (max-width: 350px) {
-        .container{
-            margin-left: -50px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
+        .content{
+            margin-left: -80px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
+
         }
     }
 

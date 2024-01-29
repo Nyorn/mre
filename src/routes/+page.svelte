@@ -330,6 +330,7 @@
 		.overlay {
 			left: 50% !important;
 			transform: translateX(-50%) !important;
+			bottom:30%;
 		}
 		.progress-bar {
 			display: none;
@@ -341,11 +342,17 @@
 
 	/* Медиа-запрос для мобильных устройств */
 	@media (max-width: 530px) {
+		.overlay {
+			max-width: 300px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
+
+
+		}
+	}
+	@media (max-width: 330px) {
 		.overlay{
 			max-width: 300px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
 		}
 	}
-
 </style>
 
 

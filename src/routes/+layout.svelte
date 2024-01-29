@@ -40,8 +40,8 @@
 
 </main>
 <Modal />
-<button type="button" class="callback text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 shadow-lg shadow-teal-500/50 dark:shadow-lg dark:shadow-teal-800/80 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 fixed bottom-5 right-10" button on:click={() => modalStack.open('feedback', {})}>
-  <Icon data={phone} style="width: 30px; height: 30px;"/> Обратный звонок
+<button type="button" class="callback text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 shadow-lg shadow-teal-500/50 dark:shadow-lg dark:shadow-teal-800/80 font-medium rounded-lg text-sm  text-center me-2 mb-2 fixed bottom-5 right-10" button on:click={() => modalStack.open('feedback', {})}>
+  <Icon data={phone} style="width: 30px; height: 30px;"/>
 </button>
 <ScrollToTopButton />
 <style global>
@@ -49,5 +49,8 @@
 .callback {
     box-shadow: 0 0 10px 0 #12ad9d;
     z-index: 9999;
+    width: 60px;
+    height: 60px;
+    border-radius: 1000px;
 }
 </style>

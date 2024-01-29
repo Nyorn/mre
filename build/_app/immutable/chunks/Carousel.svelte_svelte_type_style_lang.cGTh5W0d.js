@@ -1,1 +1,0 @@
-import{w as n}from"./index.-lbj6D5R.js";const c=i(),u=n(!0),d=n(!1);function i(){const{subscribe:l,update:r}=n([]);return l(e=>console.log("Modal stack changed:",e)),{subscribe:l,open:(e,t)=>{console.log("Opening modal:",e,t),r(o=>o.some(s=>s.type===e)?o:[...o,{open:!0,type:e,data:t}])},close:()=>{r(e=>e.length>0?e.slice(0,-1):e)}}}export{d as i,u as l,c as m};
