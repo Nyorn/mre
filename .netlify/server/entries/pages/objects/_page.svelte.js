@@ -1,6 +1,7 @@
 import { c as create_ssr_component, i as createEventDispatcher, a as add_attribute, e as escape, f as subscribe, d as each, v as validate_component } from "../../../chunks/ssr.js";
-import { i as isFullFilterVisible } from "../../../chunks/Carousel.svelte_svelte_type_style_lang.js";
+import { i as isFullFilterVisible } from "../../../chunks/store.js";
 /* empty css                                                         */
+/* empty css                                                     */
 import "@contentful/rich-text-html-renderer";
 import "../../../chunks/Svg.svelte_svelte_type_style_lang.js";
 import "canvas-confetti";

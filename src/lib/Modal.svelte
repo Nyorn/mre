@@ -73,7 +73,12 @@
         top: 1rem;
         right: 1rem;
         color: black;
+        border:none;
         /* Rest of your styles for close button */
+    }
+    .close-button:hover {
+        cursor: pointer;
+        background:transparent;
     }
         .modal-window-full-image {
             position: fixed;

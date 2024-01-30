@@ -32,7 +32,6 @@
   "dependencies": {
     "@contentful/rich-text-html-renderer": "^16.3.0",
     "@egjs/flicking-plugins": "^4.7.1",
-    "@egjs/svelte-flicking": "^4.11.2",
     "@formkit/auto-animate": "^0.8.1",
     "@fortawesome/fontawesome-free": "^6.5.1",
     "@fortawesome/free-brands-svg-icons": "^6.5.1",
@@ -47,7 +46,6 @@
     "svelte-awesome": "^3.3.1",
     "svelte-checkbox": "^1.0.1",
     "svelte-fa": "^4.0.2",
-    "svelte-forms-lib": "^2.0.1",
     "svelte-legos": "^0.2.2",
     "sveltekit-sitemap": "^1.0.21",
     "three": "^0.160.0"

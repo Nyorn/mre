@@ -27,7 +27,8 @@ const staticRoutes = [
   '/objects/revierra-fort-1-line',
   '/objects/dolche-vita-2',
   '/objects/appartamenty-arlend',
-  '/objects/appartament-koloni'
+  '/objects/appartament-koloni',
+  '/objects/byala-porto'
 ];
 
 let date = new Date().toISOString().split('T')[0];

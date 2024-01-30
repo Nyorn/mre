@@ -59,7 +59,7 @@
 }}>
 					Заказать осмотр
 				</button>
-				<div class="mt-115">
+				<div class="mt-115 map">
 				<p class="text-base md:text-lg mt-110">{@html data.object.description}</p>
 				<iframe
 					width="400"
@@ -105,4 +105,9 @@
 		max-width: 400px;
 		height: auto;
 	}
+	.text-base {
+		margin-top: 30px;
+		margin-bottom: 50px;
+	}
+
 </style>

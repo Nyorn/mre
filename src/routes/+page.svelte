@@ -6,23 +6,47 @@
 	import { onMount } from 'svelte';
 	import '@splidejs/svelte-splide/css/splide.min.css';
 	import '@splidejs/splide/css';
+	import { loading } from '$lib/store.js';
 	import { getContext, setContext } from 'svelte';
 
+	let alwaysShowPreloader = true; // Новая переменная состояния для контроля прелоадера
 
-
-
-	let loading = true;
 	let contentVisible = false;
 	let splide;
 	let currentSlide = 0;
 
 
 	const overlaysContent = [
-		{ title: 'Погружение в райскую природу:', paragraph: 'Инвестируйте в свой уголок среди изумрудных гор и бескрайних пляжей Черного моря.', button: 'Подробнее', link: 'https://sea-estate.com/objects' },
-		{ title: 'Разнообразие недвижимости:', paragraph: 'От стильных апартаментов до вилл с потрясающим видом на море - мы предлагаем разнообразие вариантов, чтобы воплотить ваши мечты в реальность.', button: 'Подробнее', link: 'https://sea-estate.com/objects' },
-		{ title: 'Инвестиции с умом: ', paragraph: 'Наша команда экспертов поможет вам сделать выгодные инвестиции в болгарскую недвижимость, обеспечивая стабильный доход и рост капитала.', button: 'Подробнее', link: 'https://sea-estate.com/objects' },
-		{ title: 'Простой процесс сделки: ', paragraph: 'Мы делаем покупку недвижимости в Болгарии легкой и прозрачной. Надежное сопровождение сделки от начала до конца.', button: 'Подробнее', link: 'https://sea-estate.com/objects' },
-		{ title: 'Обретите свой уголок под солнцем с нами.', paragraph:'Выберите Болгарию для вашего нового дома или инвестиций! ', button: 'Подробнее', link: 'https://sea-estate.com/objects' }
+		{
+			title: 'Погружение в райскую природу:',
+			paragraph: 'Инвестируйте в свой уголок среди изумрудных гор и бескрайних пляжей Черного моря.',
+			button: 'Подробнее',
+			link: 'https://sea-estate.com/objects'
+		},
+		{
+			title: 'Разнообразие недвижимости:',
+			paragraph: 'От стильных апартаментов до вилл с потрясающим видом на море - мы предлагаем разнообразие вариантов, чтобы воплотить ваши мечты в реальность.',
+			button: 'Подробнее',
+			link: 'https://sea-estate.com/objects'
+		},
+		{
+			title: 'Инвестиции с умом: ',
+			paragraph: 'Наша команда экспертов поможет вам сделать выгодные инвестиции в болгарскую недвижимость, обеспечивая стабильный доход и рост капитала.',
+			button: 'Подробнее',
+			link: 'https://sea-estate.com/objects'
+		},
+		{
+			title: 'Простой процесс сделки: ',
+			paragraph: 'Мы делаем покупку недвижимости в Болгарии легкой и прозрачной. Надежное сопровождение сделки от начала до конца.',
+			button: 'Подробнее',
+			link: 'https://sea-estate.com/objects'
+		},
+		{
+			title: 'Обретите свой уголок под солнцем с нами.',
+			paragraph: 'Выберите Болгарию для вашего нового дома или инвестиций! ',
+			button: 'Подробнее',
+			link: 'https://sea-estate.com/objects'
+		}
 	];
 	const images = [
 		'https://images.ctfassets.net/31g2btibassa/5S3oxQ5YnMis48RHU5EDlW/c7a173da23f0e7a283af64c74c883e49/6.jpg',
@@ -32,6 +56,7 @@
 		'https://images.ctfassets.net/31g2btibassa/3RYCIJ4Yta5z88joncN01a/f1297e242ddde87e95f8b2109cfea084/9.jpg',
 
 	];
+
 	function preloadImages() {
 		return Promise.all(
 			images.map((src) => {
@@ -44,93 +69,54 @@
 			})
 		);
 	}
-		// Инициализируем слайдер после монтирования компонента
-	onMount(async() => {
 
+	// Инициализируем слайдер после монтирования компонента
+	onMount(async () => {
+		loading.set(true); // Явно устанавливаем состояние загрузки
 		document.body.style.overflow = 'hidden';
 		try {
 			await preloadImages();
 		} catch (error) {
 			console.error('Ошибка при загрузке изображений:', error);
 		}
-
-		// Скрываем прелоадер
-		loading = false;
-		document.body.style.overflow = '';
-
-		if (document.readyState === 'complete') {
-			// Если страница уже загружена, немедленно скрываем прелоадер
-			loading = false;
-			contentVisible = true;
-			document.body.style.overflow = '';
-		} else {
-			// Обработчик полной загрузки страницы
-			window.addEventListener('load', () => {
-				setTimeout(() => {
-					loading = false;
-					setTimeout(() => {
-						contentVisible = true; // Показываем контент после исчезновения прелоадера
-						document.body.style.overflow = ''; // Возвращаем прокрутку
-					}, 1000); // Длительность анимации исчезновения прелоадера
-				}, 500);
-			});
-		}
 		setTimeout(() => {
+			loading.set(false); // Скрываем прелоадер после 2 секунд
+			document.body.style.overflow = '';
+		}, 1500);
 
+		// Function to handle hiding of preloader and showing content
+
+
+		// Initialize the Splide carousel
+		setTimeout(() => {
 			if (SplideShaderCarousel && SplideShaderCarousel.shaders && SplideShaderCarousel.shaders.dissolveShader) {
 				const { dissolveShader } = SplideShaderCarousel.shaders;
-
 				splide = new SplideShaderCarousel('.splide', dissolveShader, {
-				gradient: 'vertical',
-				type: 'fade',
-				height: '90vh',
-				rewind: true,
-				continuous: true,
-				autoplay: true,
-				pauseOnHover: false,
-				arrows: false,
-				speed: 1750,
-				mask: '/wave01.jpg'
-			});
-			splide.on('move', (newIndex) => {
-				currentSlide = newIndex;
-			});
-			splide.mount();
-		} else {
-			console.error('SplideShaderCarousel or dissolveShader is not available');
-		}
-	}, 1000);
-// Listen for when the window has fully loaded all content.
-		window.addEventListener('load', () => {
-			setTimeout(() => {
-				document.querySelector('.preloader').classList.add('loaded');
-				setTimeout(() => {
-					loading = false;
-					document.body.style.overflow = ''; // Сброс блокировки прокрутки
-				}, 1000);
-			}, 500);
-		});
+					gradient: 'vertical',
+					type: 'fade',
+					height: '90vh',
+					rewind: true,
+					continuous: true,
+					autoplay: true,
+					pauseOnHover: false,
+					arrows: false,
+					speed: 1750,
+					mask: '/wave01.jpg'
+				});
+				splide.on('move', (newIndex) => {
+					currentSlide = newIndex;
+				});
+				splide.mount();
+			} else {
+				console.error('SplideShaderCarousel or dissolveShader is not available');
+			}
+		}, 1000);
 
+		// Cleanup function
 		return () => {
-			// Эта функция выполнится при размонтировании компонента
 			document.body.style.overflow = '';
+			window.removeEventListener('load', handleContentLoaded);
 		};
-
-		window.addEventListener('load', () => {
-			setTimeout(() => {
-				document.querySelector('.preloader').classList.add('loaded');
-				setTimeout(() => {
-					loading = false;
-					contentVisible = true;
-					document.body.style.overflow = '';
-				}, 1000);
-			}, 500);
-		});
-		loading.set(true);
-		// Здесь ваша логика загрузки данных для страницы
-		setTimeout(() => {
-			loading.set(false); // После загрузки данных
-		}, 2000);
 	});
 
 
@@ -140,26 +126,36 @@
 
 	<title>Sea Real Estate: Элитная Недвижимость на Первой Линии Моря в Болгарии</title>
 
-	<meta name="description" content="Sea Real Estate предлагает эксклюзивную недвижимость в туристических зонах Болгарии. Лучшие предложения на первой и второй линии от моря. Узнайте больше!" />
-
+	<meta name="description"
+				content="Sea Real Estate предлагает эксклюзивную недвижимость в туристических зонах Болгарии. Лучшие предложения на первой и второй линии от моря. Узнайте больше!" />
 
 
 	<script src="/splide-shader-carousel.min.js" defer></script>
 </svelte:head>
 
 
-
 <section class="splide" aria-label="Splide Shader Carousel Example" class:loaded={!loading}>
 	<div class="splide__track">
 		<ul class="splide__list">
-			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/5S3oxQ5YnMis48RHU5EDlW/c7a173da23f0e7a283af64c74c883e49/6.jpg" alt="Image 1" class="w-full"  /></li>
-			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/3IR96Tct5EEWK2kvkr0zMR/6a4cc78c2a240fe39aa58c8291dc424b/5.jpg" alt="Image 2" class="w-full"  /></li>
-			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/7rKPPYiTx6mu5o4EzpKOKB/130193a6f8580c8d9df2a9fac5ee66e9/7.jpg" alt="Image 3" class="w-full"  /></li>
-			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/2PdBBJGQCso03iFHKP5F1a/0906cf5525eef4c8b8517393836aac88/8.jpg" alt="Image 4" class="w-full"  /></li>
-			<li class="splide__slide"><img src="https://images.ctfassets.net/31g2btibassa/3RYCIJ4Yta5z88joncN01a/f1297e242ddde87e95f8b2109cfea084/9.jpg" alt="Image 5" class="w-full"  /></li>
+			<li class="splide__slide"><img
+				src="https://images.ctfassets.net/31g2btibassa/5S3oxQ5YnMis48RHU5EDlW/c7a173da23f0e7a283af64c74c883e49/6.jpg"
+				alt="Image 1" class="w-full" /></li>
+			<li class="splide__slide"><img
+				src="https://images.ctfassets.net/31g2btibassa/3IR96Tct5EEWK2kvkr0zMR/6a4cc78c2a240fe39aa58c8291dc424b/5.jpg"
+				alt="Image 2" class="w-full" /></li>
+			<li class="splide__slide"><img
+				src="https://images.ctfassets.net/31g2btibassa/7rKPPYiTx6mu5o4EzpKOKB/130193a6f8580c8d9df2a9fac5ee66e9/7.jpg"
+				alt="Image 3" class="w-full" /></li>
+			<li class="splide__slide"><img
+				src="https://images.ctfassets.net/31g2btibassa/2PdBBJGQCso03iFHKP5F1a/0906cf5525eef4c8b8517393836aac88/8.jpg"
+				alt="Image 4" class="w-full" /></li>
+			<li class="splide__slide"><img
+				src="https://images.ctfassets.net/31g2btibassa/3RYCIJ4Yta5z88joncN01a/f1297e242ddde87e95f8b2109cfea084/9.jpg"
+				alt="Image 5" class="w-full" /></li>
 		</ul>
 	</div>
-	<div class="overlay" style={`left: ${currentSlide * (100 / (overlaysContent.length - 1))}%; transform: translateX(-${currentSlide === 0 ? 0 : currentSlide === overlaysContent.length - 1 ? 500 : 250}px);`}>
+	<div class="overlay"
+			 style={`left: ${currentSlide * (100 / (overlaysContent.length - 1))}%; transform: translateX(-${currentSlide === 0 ? 0 : currentSlide === overlaysContent.length - 1 ? 500 : 250}px);`}>
 		<h2>{overlaysContent[currentSlide].title}</h2>
 		<div class="divider"></div>
 		<p>{overlaysContent[currentSlide].paragraph}</p>
@@ -173,8 +169,8 @@
 	<div class="progress-bar" />
 </section>
 
-<InfoBlock  />
-<FeedbackForm  />
+<InfoBlock />
+<FeedbackForm />
 
 
 <style>
@@ -189,6 +185,7 @@
 		background-color: white;
 		z-index: 10;
 	}
+
 	.divider {
 		height: 4px; /* Невидимый элемент, служащий якорем для выравнивания */
 		width: 100%;
@@ -217,7 +214,7 @@
 		line-height: 1.1;
 		margin-bottom: 20px;
 		margin-top: 0;
-    min-height: 40px;
+		min-height: 40px;
 	}
 
 	.overlay p {
@@ -227,31 +224,16 @@
 		margin-bottom: 20px;
 	}
 
-	.overlay button {
-		background-color: white;
-		border: none;
-		padding: 10px 15px; /* Увеличиваем размер кнопки */
-		margin-top: 30px;
-		align-self: start; /* Располагаем кнопку ближе к левому краю */
-	}
 
-	.splide__pagination .splide__pagination__page {
-		opacity: 1!important;
-		z-index: 2000;
-		color:black;/* Показываем пагинацию всегда */
-	}
-	.splide__pagination button {
-		opacity: 1;
-	}
 
-		 /* Существующие стили */
+	/* Существующие стили */
 
 	.learn-more {
 		position: relative;
 		padding-left: 50px; /* Пространство для линии слева от текста */
 		padding-right: 40px;
 		padding-top: 5px;
-		padding-bottom: 5px;/* Пространство для стрелки справа от текста */
+		padding-bottom: 5px; /* Пространство для стрелки справа от текста */
 		display: inline-block;
 		cursor: pointer;
 		background-color: transparent; /* Фон кнопки */
@@ -261,7 +243,7 @@
 		border: #12ad9d solid 2px;
 		margin-top: 10px; /* Отступ сверху */
 		transition: transform 0.4s cubic-bezier(0.75, 0.02, 0.5, 1); /* Плавность анимации перемещения */
-    box-shadow: 0 0 10px 0 #12ad9d;
+		box-shadow: 0 0 10px 0 #12ad9d;
 	}
 
 	.learn-more::before {
@@ -325,20 +307,21 @@
 			z-index: 10;
 		}
 	}
+
 	/* Стили для адаптации подложки на меньших экранах */
 	@media (max-width: 1080px) {
 		.overlay {
 			left: 50% !important;
 			transform: translateX(-50%) !important;
-			bottom:30%;
+			bottom: 30%;
 		}
+
 		.progress-bar {
 			display: none;
 		}
 	}
-	.info-block {
-		min-height: auto; /* Разрешаем компоненту расти с содержимым */
-	}
+
+
 
 	/* Медиа-запрос для мобильных устройств */
 	@media (max-width: 530px) {
@@ -348,8 +331,9 @@
 
 		}
 	}
+
 	@media (max-width: 330px) {
-		.overlay{
+		.overlay {
 			max-width: 300px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
 		}
 	}

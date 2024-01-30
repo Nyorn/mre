@@ -12,26 +12,36 @@
   import { loading } from '$lib/store.js';
   import Icon from 'svelte-awesome/components/Icon.svelte';
   import phone from 'svelte-awesome/icons/phone';
-
+  let preloader;
   setContext('loading', loading);
   onMount(() => {
-    loading.set(true); // Включаем прелоадер при каждом посещении страницы
-    window.addEventListener('load', () => {
+    loading.set(true);
+    document.body.classList.add('no-scroll');
     setTimeout(() => {
-      loading.set(false); // Правильное обновление значения хранилища
-    }, 2000); // Например, 3 секунды загрузки
-  }); });
+      loading.set(false);
+      document.body.classList.remove('no-scroll');
+    }, 1500);
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-2EQQHPBC9X');
+  });
+
 </script>
 <svelte:head>
 
 
 
 
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-2EQQHPBC9X"></script>
 
 
   <script src="https://unpkg.com/three@0.140.2/build/three.min.js"></script>
 </svelte:head>
-<Preloader {loading}/>
+{#if $loading}
+<Preloader bind:this={preloader} />
+{/if}
 <Nav />
 <main>
   <slot />

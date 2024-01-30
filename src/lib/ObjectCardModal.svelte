@@ -59,7 +59,7 @@ let images = [];
                  <img src={object.photo.url} alt={object.photo.description} class="w-full h-auto rounded-lg" />
              {/if}
         </div>
-        <div class="p-4 space-y-4">
+        <div class="p-5 space-y-5">
           <h1 class="text-2xl font-bold">{object.name}</h1>
       <p>Город: {object.city}</p>
       <p>Площадь: {object.area}</p>
@@ -73,11 +73,11 @@ let images = [];
 }}>
             Заказать осмотр
           </button>
-          <p class="text-base md:text-lg">{@html htmlDescription}</p>
+          <p class="descr text-base md:text-lg">{@html htmlDescription}</p>
 
 
 
-
+          <div class="mt-115 map">
           <iframe
             width="400"
             height="400"
@@ -90,7 +90,8 @@ let images = [];
             src="https://maps.google.com/maps?q={object.location.lat},{object.location
 			.lon}&z=12&amp;output=embed"
           />
-          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded shadow close-button" on:click={closeModal}>Закрыть</button>
+          </div>
+          <button class="mt-4 px-4 py-2 variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded shadow close-button" on:click={closeModal}>Закрыть</button>
 
         </div>
   </div>
@@ -110,6 +111,10 @@ let images = [];
         border-radius: 10px;
     }
 
+.map {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
     .object-card-modal {
         position: relative;
         background-image: radial-gradient(at 100% 0%, rgba(var(--color-secondary-500) / 0.33) 0px, transparent 50%), radial-gradient(at 2% 1%, rgba(var(--color-error-500) / 0.33) 0px, transparent 50%);
@@ -134,7 +139,7 @@ let images = [];
         margin: 10px auto 20px; /* Автоматические отступы слева и справа для центрирования, отступ сверху */
         width: fit-content; /* Ширина по содержимому */
         padding: 10px 20px; /* Паддинги кнопки */
-        background-color: #007bff; /* Фон кнопки */
+
         color: white; /* Цвет текста */
         border: none; /* Убрать рамку */
         border-radius: 5px; /* Закругленные углы */

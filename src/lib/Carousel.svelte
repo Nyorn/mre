@@ -192,7 +192,12 @@ console.log("Slug:", slug);
         width: 100%;
         height: auto; /* Adjust height to maintain aspect ratio */
         object-fit: cover;
+        border-radius: 10px;
     }
+    .carousel-image:hover {
+        cursor: zoom-in; /* Изменение курсора на лупу при наведении */
+    }
+
 
     .carousel-button {
         position: absolute;

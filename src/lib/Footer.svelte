@@ -10,7 +10,8 @@
 
 <footer class="bg-white  w-full">
   <div class="mx-auto p-4 py-6 lg:py-8 footer-container" style="padding-right:10%;padding-left:10%">
-<div class="logotype bb">
+    <div class="bb">
+<div class="logotype">
       <!-- Лого, вертикальная черта и название компании -->
         <div class="mb-0 md:mb-0 flex items-center">
         <a href="https://sea-estate.com/" class="flex items-center">
@@ -24,6 +25,7 @@
           </div>
         </a>
       </div>
+</div>
   </div>
     <div class="contacts footer-section">
 
@@ -106,7 +108,9 @@
     footer {
         background-color: #030005;
     }
-
+    .logotype {
+        margin-top: 35px;
+    }
     footer img {
         margin-left: 0px; /* Отступ для логотипа */
     }
@@ -132,10 +136,7 @@
         margin-left: 5px; /* Отступ текста от иконки */
     }
 
-    .social-icons svg {
-        width:52px; /* Увеличенный размер иконок */
-        height: 52px;
-    }
+
 
     .logo {
         position: relative;
@@ -156,9 +157,7 @@
         align-items: center;
         width: 100%;
     }
-    nav a {
-        margin-top: 110px!important;
-    }
+
     @media (min-width: 980px) {
         .footer-container {
             flex-direction: row;
@@ -185,10 +184,7 @@
         }
     }
 
-    .icon-large svg {
-        font-size: 54px; /* Увеличение размера иконок */
 
-    }
 
     .logo {
         margin-bottom: 20px;
@@ -278,14 +274,7 @@
     }
 
     @media (max-width: 1080px) {
-        nav a {
-            padding: 0px;
-        }
-        nav button {
-            order: 2; /* Перемещение кнопки гамбургера в конец flex-контейнера */
-            padding: 8px;
-            margin-left: auto; /* Дополнительное выравнивание */
-        }
+
 
         .bb {
             transform: scale(0.7);
@@ -298,13 +287,7 @@
             transform: scale(0.7);
             bottom: 93%;
         }
-        nav img {
 
-            margin-bottom: 50px; /* Отступ для логотипа */
-            margin-right: -20px;
-            margin-left: 0px;
-
-        }
 
     }
     @media (max-height: 1080px) {
@@ -325,30 +308,13 @@
         }
 
 
-        nav {
-            min-height: 120px;
-        }
+
         /* Adjustments for the hamburger menu */
-        nav button {
-            padding: 8px; /* or other suitable size */
-            position: relative;
-            left: 420px;
 
-
-        }
 
 
     }
-    @media (max-width: 520px) {
-        nav button {
-            left:320px;
-        }
-    }
-    @media (max-width: 420px) {
-        nav button {
-            left:230px;
-        }
-    }
+
 </style>
 
 

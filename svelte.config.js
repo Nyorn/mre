@@ -30,7 +30,8 @@ const config = {
 				'/objects/revierra-fort-1-line',
 				'/objects/dolche-vita-2',
 				'/objects/appartamenty-arlend',
-				'/objects/appartament-koloni'
+				'/objects/appartament-koloni',
+				'/objects/byala-porto'
 
 			],
 			handleHttpError: ({ path, referrer, message }) => {
