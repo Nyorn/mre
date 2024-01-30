@@ -129,7 +129,7 @@
 	<meta name="description"
 				content="Sea Real Estate предлагает эксклюзивную недвижимость в туристических зонах Болгарии. Лучшие предложения на первой и второй линии от моря. Узнайте больше!" />
 
-
+	<script src="https://unpkg.com/three@0.140.2/build/three.min.js"></script>
 	<script src="/splide-shader-carousel.min.js" defer></script>
 </svelte:head>
 
@@ -141,16 +141,16 @@
 				src="https://images.ctfassets.net/31g2btibassa/2C5LnBXILzwiuLyLqXZSOW/f8f3b3f9bc94c38b5d1802074b238032/8.avif"
 				alt="Image 1" class="w-full" /></li>
 			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/667lBEWzae2sxYHIByfVOX/183209fa433dbf633b527c09118fa59f/9.avif"
+				src="https://images.ctfassets.net/31g2btibassa/667lBEWzae2sxYHIByfVOX/183209fa433dbf633b527c09118fa59f/9.avif" loading="lazy"
 				alt="Image 2" class="w-full" /></li>
 			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/5rqygkYnMRWV6SrFF99QV3/52b7097d451ba286d9562728839a4103/11-1-scaled.avif"
+				src="https://images.ctfassets.net/31g2btibassa/5rqygkYnMRWV6SrFF99QV3/52b7097d451ba286d9562728839a4103/11-1-scaled.avif" loading="lazy"
 				alt="Image 3" class="w-full" /></li>
 			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/2vX2EWllBrw5VA9WeMlQ9q/b3ac2ce275b88f1c46abee6e232227e7/burgas.avif"
+				src="https://images.ctfassets.net/31g2btibassa/2vX2EWllBrw5VA9WeMlQ9q/b3ac2ce275b88f1c46abee6e232227e7/burgas.avif" loading="lazy"
 				alt="Image 4" class="w-full" /></li>
 			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/5axiBgylT6tNsCoa8Es4Gs/07491832211dd7b7392bc058c3871b78/7.avif"
+				src="https://images.ctfassets.net/31g2btibassa/5axiBgylT6tNsCoa8Es4Gs/07491832211dd7b7392bc058c3871b78/7.avif" loading="lazy"
 				alt="Image 5" class="w-full" /></li>
 		</ul>
 	</div>

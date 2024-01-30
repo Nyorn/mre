@@ -40,9 +40,9 @@ console.log('Received imageUrl:', imageUrl);
 {#if !hidden && imageUrl}
   <div class="modal" use:clickOutsideAction on:clickoutside={handleClickOutside}>
     <div class="image-container">
-      <button class="previous" on:click={goToPreviousImage}>&larr;</button>
+      <button class="previous" aria-label="Предыдущий слайд" on:click={goToPreviousImage}>&larr;</button>
       <img src={imageUrl} alt="Full Size Image" class="image" />
-      <button class="next" on:click={goToNextImage}>&rarr;</button>
+      <button class="next" aria-label="Следующий слайд" on:click={goToNextImage}>&rarr;</button>
     </div>
   </div>
 {:else}

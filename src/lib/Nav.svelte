@@ -179,22 +179,7 @@
 	.hamburger:hover {
 		background-color: transparent;
 	}
-	.logotype::before,
-	.logotype::after {
-		content: '';
-		position: absolute;
-		top: -10px; /* Отступ сверху */
-		bottom: -10px; /* Отступ снизу */
-		left: -10px; /* Отступ слева */
-		right: -10px; /* Отступ справа */
-		z-index: -1;
-		box-shadow: inset 0 0 0 var(--path-width);
-		animation: clipMe var(--anime-time) linear infinite;
-	}
 
-	.logotype::before {
-		animation-delay: calc(var(--anime-time) * -.5);
-	}
 
 	/* Стили для списка номеров телефонов и почты */
 	ul {

@@ -89,7 +89,7 @@ console.log("Slug:", slug);
 <!-- Контейнер карусели -->
 <div class="carousel">
   <!-- Кнопка: Влево -->
-  <button type="button" class="carousel-button left" on:click={carouselLeft}>
+  <button type="button" aria-label="Предыдущий слайд" class="carousel-button left" on:click={carouselLeft}>
     <i class="fa-solid fa-arrow-left arrow-icon" />
   </button>
   <!-- Главные изображения -->
@@ -119,7 +119,7 @@ console.log("Slug:", slug);
     {/each}
   </div>
   <!-- Кнопка: Вправо -->
-  <button type="button" class="carousel-button right" on:click={carouselRight}>
+  <button type="button" aria-label="Следующий слайд" class="carousel-button right" on:click={carouselRight}>
     <i class="fa-solid fa-arrow-right arrow-icon" />
   </button>
 </div>
