@@ -1,17 +1,17 @@
 <script>
   export let objectName = '';
-  export let key = '';
+  export let url = ''; // Использование URL вместо key
 
   let name = '';
   let phone = '+';
-  let message = objectName ? `Осмотр объекта: ${objectName}` : '';
+  let message = objectName ? `Хочу заказать осмотр объекта: ${objectName}` : '';
   let formErrors = {};
   let isSubmitting = false;
   let submissionResponse = '';
 
-  $: formErrors.name = !name ? 'Имя обязательно.' : '';
-  $: formErrors.phone = !phone ? 'Телефон обязателен.' : (!/^\+\d{1,15}$/.test(phone) ? 'Неверный формат телефона.' : '');
-  $: formErrors.message = !message ? 'Сообщение обязательно.' : '';
+  $: formErrors.name = !name ? 'Введите имя.' : '';
+  $: formErrors.phone = !phone ? 'Введите телефон.' : (!/^\+\d{1,15}$/.test(phone) ? 'Неверный формат телефона.' : '');
+  $: formErrors.message = !message ? 'Оставьте сообщение.' : '';
 
   async function submitForm(event) {
     event.preventDefault();
@@ -66,7 +66,7 @@
       <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
     </div>
   </div>
-  <input type="hidden" name="key" value={key} />
+  <input type="hidden" name="url" value={url} />
   <button type="submit" className="submit-button mt-10" disabled={isSubmitting}>{isSubmitting ? 'Отправка...' : 'Отправить'}</button>
 </form>
 <slot />

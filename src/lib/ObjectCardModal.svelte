@@ -41,6 +41,8 @@ let images = [];
     console.log("Click outside detected");
     modalStack.close(); // Закрываем модальное окно
   }
+
+  const baseUrl = "https://sea-estate.com/objects/";
 </script>
 
 
@@ -69,7 +71,8 @@ let images = [];
       <p>Цена: {object.price}</p>
           <button class="variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded" on:click={() => {
   console.log("Opening modal with object name:", object.name);
-  modalStack.open('feedback', { objectName: object.name, key: object.key });
+        const objectUrl = `${baseUrl}${object.slug}`;
+        modalStack.open('feedback', { objectName: object.name, url: objectUrl });
 }}>
             Заказать осмотр
           </button>

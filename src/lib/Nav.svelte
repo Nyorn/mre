@@ -14,6 +14,9 @@
 	function toggleDropdown() {
 		isDropdownOpen = !isDropdownOpen;
 	}
+	function closeNavMenu() {
+		isNavMenuOpen = false;
+	}
 
 	function handleClickOutside(event) {
 		if (navMenu && !navMenu.contains(event.target) && isNavMenuOpen) {
@@ -101,11 +104,11 @@
 			</button>
 		</div>
 			<div bind:this={navMenu} class="{isNavMenuOpen ? 'flex' : 'hidden'} flex-col xl:hidden mobile-nav-menu">
-				<a href="/" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Главная</a>
-				<a href="/objects" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Каталог</a>
-				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100">О нас</a>
-				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Документы</a>
-				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100">Контакты</a>
+				<a href="/" class="py-2 px-3 text-gray-900 hover:bg-gray-100" on:click={closeNavMenu}>Главная</a>
+				<a href="/objects" class="py-2 px-3 text-gray-900 hover:bg-gray-100" on:click={closeNavMenu}>Каталог</a>
+				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100" on:click={closeNavMenu}>О нас</a>
+				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100" on:click={closeNavMenu}>Документы</a>
+				<a href="#" class="py-2 px-3 text-gray-900 hover:bg-gray-100" on:click={closeNavMenu}>Контакты</a>
 			</div>
 
 		<div class="navmenu items-center justify-between hidden w-full md:flex md:w-auto md:order-1" id="navbar-language">
@@ -386,8 +389,18 @@ nav a:hover {
 		.contacts {
 			display: none;
 		}
+
+
 		}
 	}
+
+	@media (max-width: 500px) {
+		.mobile-nav-menu {
+			top: 30%;
+		}
+
+	}
+
 
 	@media (min-width: 1190px) { /* или другой размер, соответствующий десктопной версии */
 		.navmenu {

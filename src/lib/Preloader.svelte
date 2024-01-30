@@ -143,4 +143,11 @@
             visibility: hidden;
         }
     }
+    @media (max-width: 540px) {
+        .logotype {
+            margin-top: 30px;
+        }
+
+
+    }
 </style>

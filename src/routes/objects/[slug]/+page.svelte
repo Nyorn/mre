@@ -26,6 +26,7 @@
 			document.querySelector('meta[name="description"]').setAttribute('content', description);
 		}
 	});
+	const baseUrl = "https://sea-estate.com/objects/";
 
 </script>
 <svelte:head>
@@ -40,7 +41,7 @@
 <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold my-4">{data.object.name}</h1>
 <section class="flex flex-col md:flex-row justify-center items-center md:items-start md:space-x-4 px-4 py-2">
 	{#if data && data.object}
-		<div class="w-full md:w-1/2">
+		<div class="w-full md:w-1/2 galery">
 		    <Carousel slug={data.object.slug} />
 
 
@@ -55,7 +56,8 @@
 				<p class="text-sm md:text-base">Лифт: {data.object.elevator ? 'Есть' : 'Нет'}</p>
 				<button class="variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded mt-10 mb-10" button on:click={() => {
   console.log("Opening modal with object name:", data.object.name);
-  modalStack.open('feedback', { objectName: data.object.name });
+	 const objectUrl = `${baseUrl}${data.object.slug}`;
+  modalStack.open('feedback', { objectName: data.object.name, url: objectUrl });
 }}>
 					Заказать осмотр
 				</button>

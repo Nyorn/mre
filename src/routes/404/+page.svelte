@@ -1,4 +1,6 @@
-
+<script>
+import { page } from '$app/stores'
+</script>
 
 
 <body>
@@ -8,6 +10,7 @@
     <div class="notfound-404">
       <h1>404</h1>
       <h2>Page not found</h2>
+
     </div>
     <a href="http://sea-estate.com">Главная</a>
   </div>
