@@ -7,19 +7,21 @@
   }
 
   let objectName = '';
-
+  let url = '';
   $: if ($modalStack.length > 0 && $modalStack[$modalStack.length - 1].type === 'feedback') {
     const modalData = $modalStack[$modalStack.length - 1].data;
-    objectName = modalData.objectName || ''; // Ensure fallback to empty string
+    objectName = modalData.objectName || '';
+    url = modalData.url || '';
+    isDataReady = !!url;
   }
 </script>
 
 
-{#if $modalStack.length > 0 && $modalStack[$modalStack.length - 1].type === 'feedback'}
+{#if $modalStack.length > 0 && $modalStack[$modalStack.length - 1].type === 'feedback' && isDataReady}
   <div class="feedback-modal-container">
-    <button class="feedback-close-button absolute top-0 right-0 m-2" on:click={closeModal}>X</button>
-    <div class="p-4 shadow-lg rounded-lg bg-white">
-      <FeedbackForm {objectName} />
+    <button class="feedback-close-button" on:click={closeModal}>X</button>
+    <div class="modal-content">
+      <FeedbackForm {objectName} {url} />
     </div>
   </div>
 {/if}

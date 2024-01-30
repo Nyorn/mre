@@ -20,7 +20,7 @@
     {#each $modalStack as modalItem}
       <div class="modal-window">
         {#if modalItem.type === 'feedback'}
-          <FeedbackForm objectName={modalItem.data.objectName || ''} />
+          <FeedbackForm objectName={modalItem.data.objectName || ''} url={modalItem.data.url || ''} />
         {:else if modalItem.type === 'objectCard'}
           <ObjectCardModal object={modalItem.data} />
 

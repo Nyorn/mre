@@ -7,6 +7,8 @@ const css = {
 const FeedbackForm = create_ssr_component(($$result, $$props, $$bindings, slots) => {
   let { objectName = "" } = $$props;
   let { url = "" } = $$props;
+  console.log("Props in FeedbackForm:", { objectName, url });
+  console.log("Received URL in feedback form:", url);
   let name = "";
   let phone = "+";
   let message = objectName ? `Хочу заказать осмотр объекта: ${objectName}` : "";

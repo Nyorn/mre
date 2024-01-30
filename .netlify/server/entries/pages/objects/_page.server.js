@@ -1,4 +1,4 @@
-import { e as error } from "../../../chunks/index.js";
+import { e as error } from "../../../chunks/index2.js";
 import { c as contentfulFetch } from "../../../chunks/contentful-fetch.js";
 const query = `
 {

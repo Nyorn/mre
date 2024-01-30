@@ -5,6 +5,7 @@
 		import {modalStack} from '$lib/store.js';
 		import Modal from '$lib/Modal.svelte'
 		const dispatch = createEventDispatcher();
+		const baseUrl = "https://sea-estate.com/objects/";
 	 function openModal() {
 	 console.log(object);
         console.log('Открываем модальное окно для объекта:', object);

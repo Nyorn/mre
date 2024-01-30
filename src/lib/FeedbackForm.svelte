@@ -1,7 +1,8 @@
 <script>
   export let objectName = '';
-  export let url = ''; 
-
+  export let url = '';
+  console.log("Props in FeedbackForm:", { objectName, url });
+  console.log("Received URL in feedback form:", url);
   let name = '';
   let phone = '+';
   let message = objectName ? `Хочу заказать осмотр объекта: ${objectName}` : '';

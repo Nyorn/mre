@@ -1,27 +1,22 @@
 import { writable } from 'svelte/store';
 
-export const modalStack = createModalStack();
-export const loading = writable(true);
-export const isFullFilterVisible = writable(false);
 function createModalStack() {
-  const { subscribe, update } = writable([]); // Ensure initial state is an empty array
-  subscribe(value => console.log("Modal stack changed:", value)); // Log stack changes
+  const { subscribe, update } = writable([]);
 
   return {
     subscribe,
     open: (type, data) => {
       console.log("Opening modal:", type, data);
-      update(stack => {
-        if (!stack.some(modal => modal.type === type)) {
-          return [...stack, { open: true, type, data }];
-        }
-        return stack;
-      });
+      update(stack => [...stack, { open: true, type, data }]);
     },
-    close: () => {
+    close: (type) => {
       update(stack => {
-        // Remove the last modal from the stack
         if (stack.length > 0) {
+          // Optional: Check if the last modal matches the type before closing
+          if (type && stack[stack.length - 1].type !== type) {
+            console.warn(`Trying to close a modal of type '${type}', but the last modal is of a different type.`);
+            return stack;
+          }
           return stack.slice(0, -1);
         }
         return stack;
@@ -29,3 +24,7 @@ function createModalStack() {
     }
   };
 }
+
+export const modalStack = createModalStack();
+export const loading = writable(true);
+export const isFullFilterVisible = writable(false);

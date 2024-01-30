@@ -72,6 +72,7 @@ let images = [];
           <button class="variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded" on:click={() => {
   console.log("Opening modal with object name:", object.name);
         const objectUrl = `${baseUrl}${object.slug}`;
+        console.log("Object URL:", objectUrl);
         modalStack.open('feedback', { objectName: object.name, url: objectUrl });
 }}>
             Заказать осмотр
