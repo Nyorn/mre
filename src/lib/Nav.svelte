@@ -305,7 +305,7 @@ nav a:hover {
 		transform: scale(0.9);
 		width: var(--box-size);
 		height: var(--box-size);
-		margin: auto;
+
 
 		background: var(--codepen-logo-path) no-repeat 50% / 70% rgba(0, 0, 0, .1);
 		color: var(--main-color);
