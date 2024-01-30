@@ -49,11 +49,11 @@
 		}
 	];
 	const images = [
-		'https://images.ctfassets.net/31g2btibassa/5S3oxQ5YnMis48RHU5EDlW/c7a173da23f0e7a283af64c74c883e49/6.jpg',
-		'https://images.ctfassets.net/31g2btibassa/3IR96Tct5EEWK2kvkr0zMR/6a4cc78c2a240fe39aa58c8291dc424b/5.jpg',
-		'https://images.ctfassets.net/31g2btibassa/7rKPPYiTx6mu5o4EzpKOKB/130193a6f8580c8d9df2a9fac5ee66e9/7.jpg',
-		'https://images.ctfassets.net/31g2btibassa/2PdBBJGQCso03iFHKP5F1a/0906cf5525eef4c8b8517393836aac88/8.jpg',
-		'https://images.ctfassets.net/31g2btibassa/3RYCIJ4Yta5z88joncN01a/f1297e242ddde87e95f8b2109cfea084/9.jpg',
+		'https://images.ctfassets.net/31g2btibassa/2C5LnBXILzwiuLyLqXZSOW/f8f3b3f9bc94c38b5d1802074b238032/8.avif',
+		'https://images.ctfassets.net/31g2btibassa/667lBEWzae2sxYHIByfVOX/183209fa433dbf633b527c09118fa59f/9.avif',
+		'https://images.ctfassets.net/31g2btibassa/5rqygkYnMRWV6SrFF99QV3/52b7097d451ba286d9562728839a4103/11-1-scaled.avif',
+		'https://images.ctfassets.net/31g2btibassa/2vX2EWllBrw5VA9WeMlQ9q/b3ac2ce275b88f1c46abee6e232227e7/burgas.avif',
+		'https://images.ctfassets.net/31g2btibassa/5axiBgylT6tNsCoa8Es4Gs/07491832211dd7b7392bc058c3871b78/7.avif',
 
 	];
 
@@ -138,19 +138,19 @@
 	<div class="splide__track">
 		<ul class="splide__list">
 			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/5S3oxQ5YnMis48RHU5EDlW/c7a173da23f0e7a283af64c74c883e49/6.jpg"
+				src="https://images.ctfassets.net/31g2btibassa/2C5LnBXILzwiuLyLqXZSOW/f8f3b3f9bc94c38b5d1802074b238032/8.avif"
 				alt="Image 1" class="w-full" /></li>
 			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/3IR96Tct5EEWK2kvkr0zMR/6a4cc78c2a240fe39aa58c8291dc424b/5.jpg"
+				src="https://images.ctfassets.net/31g2btibassa/667lBEWzae2sxYHIByfVOX/183209fa433dbf633b527c09118fa59f/9.avif"
 				alt="Image 2" class="w-full" /></li>
 			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/7rKPPYiTx6mu5o4EzpKOKB/130193a6f8580c8d9df2a9fac5ee66e9/7.jpg"
+				src="https://images.ctfassets.net/31g2btibassa/5rqygkYnMRWV6SrFF99QV3/52b7097d451ba286d9562728839a4103/11-1-scaled.avif"
 				alt="Image 3" class="w-full" /></li>
 			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/2PdBBJGQCso03iFHKP5F1a/0906cf5525eef4c8b8517393836aac88/8.jpg"
+				src="https://images.ctfassets.net/31g2btibassa/2vX2EWllBrw5VA9WeMlQ9q/b3ac2ce275b88f1c46abee6e232227e7/burgas.avif"
 				alt="Image 4" class="w-full" /></li>
 			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/3RYCIJ4Yta5z88joncN01a/f1297e242ddde87e95f8b2109cfea084/9.jpg"
+				src="https://images.ctfassets.net/31g2btibassa/5axiBgylT6tNsCoa8Es4Gs/07491832211dd7b7392bc058c3871b78/7.avif"
 				alt="Image 5" class="w-full" /></li>
 		</ul>
 	</div>

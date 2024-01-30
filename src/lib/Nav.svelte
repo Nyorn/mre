@@ -132,13 +132,13 @@
 			</ul>
 			<ul class="contacts mr-0 text-xs">
 				<li class="mb-0">
-					<a href="https://flowbite.com/" class="hover:underline">+359 895-340-006</a>
+					<a href="tel:+359895340006" class="hover:underline">+359 895-340-006</a>
 				</li>
 				<li class="mb-0">
-					<a href="https://tailwindcss.com/" class="hover:underline">+359 877-580-966</a>
+					<a href="tel:+359877580966" class="hover:underline">+359 877-580-966</a>
 				</li>
 				<li class="mb-0">
-					<a href="https://tailwindcss.com/" class="hover:underline">+38(93)053-55-25</a>
+					<a href="tel:+38930535525" class="hover:underline">+38(93)053-55-25</a>
 				</li>
 
 
