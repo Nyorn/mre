@@ -143,9 +143,9 @@
             visibility: hidden;
         }
     }
-    @media (max-width: 540px) {
+    @media (max-width: 440px) {
         .logotype {
-            margin-top: 30px;
+            margin-top: 50px;
         }
 
 

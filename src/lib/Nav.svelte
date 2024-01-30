@@ -396,7 +396,7 @@ nav a:hover {
 
 	@media (max-width: 500px) {
 		.mobile-nav-menu {
-			top: 30%;
+			top: 27%;
 		}
 
 	}
