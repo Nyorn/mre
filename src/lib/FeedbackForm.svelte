@@ -1,6 +1,6 @@
 <script>
   export let objectName = '';
-  export let url = ''; // Использование URL вместо key
+  export let url = ''; 
 
   let name = '';
   let phone = '+';
@@ -22,7 +22,7 @@
     submissionResponse = '';
 
     try {
-      const response = await fetch('https://usebasin.com/f/d51a8b9bb495', {
+      const response = await fetch('https://usebasin.com/f/9f7c7790f8dd', {
         method: 'POST',
         body: formData,
         headers: {
