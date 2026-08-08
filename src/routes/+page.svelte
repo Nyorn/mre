@@ -3,6 +3,7 @@
 	import Preloader from '$lib/Preloader.svelte';
 	import FeedbackForm from '$lib/FeedbackForm.svelte';
 	import InfoBlock from '$lib/InfoBlock.svelte';
+	import ScenarioEntry from '$lib/ScenarioEntry.svelte';
 	import { onMount } from 'svelte';
 	import '@splidejs/svelte-splide/css/splide.min.css';
 	import '@splidejs/splide/css';
@@ -168,6 +169,14 @@
 	</div>
 	<div class="progress-bar" />
 </section>
+
+<!--
+  Slice A (P0.1): the scenario entry sits directly under the hero so choosing a
+  task — not scrubbing a carousel — is the primary way into the site. The
+  carousel is left in place as decorative context; it is no longer the main
+  navigation affordance.
+-->
+<ScenarioEntry />
 
 <InfoBlock />
 <FeedbackForm />

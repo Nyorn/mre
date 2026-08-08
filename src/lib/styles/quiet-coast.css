@@ -1,0 +1,284 @@
+/*
+ * Quiet Coast — visual tokens (Slice A, P0.7)
+ * Source: docs/real-estate/brand-delta.v1.md §2 (system) and §3 (Direction A palette).
+ *
+ * Additive on purpose: this file only declares custom properties and `qc-`
+ * prefixed classes. It does not restyle existing Tailwind/Skeleton surfaces,
+ * so it cannot regress pages that Slice A does not touch.
+ *
+ * Fonts: brand-delta names Source Serif 4 + Inter as candidates but requires a
+ * licence decision and self-hosted WOFF2 first. Until that exists we use the
+ * documented fallbacks (Georgia / system-ui) rather than pulling a third
+ * webfont. See "known blockers" in docs/real-estate/slice-a-implementation.v1.md.
+ */
+
+:root {
+	/* Palette — Quiet Coast */
+	--qc-ink-950: #102a30;
+	--qc-ink-700: #344e54;
+	--qc-muted: #62777c;
+	--qc-surface: #fffdf8;
+	--qc-surface-subtle: #f3f6f5;
+	--qc-border: #d7e1df;
+	--qc-sea-700: #006b67;
+	--qc-sea-800: #005653;
+	--qc-sea-soft: #dcefeb;
+	--qc-focus: #0b73b9;
+	--qc-sand: #c6a77b;
+	--qc-warning-text: #604c12;
+	--qc-warning-surface: #fff4d6;
+
+	/* Type families — fallbacks until the licence decision lands */
+	--qc-font-display: Georgia, "Times New Roman", serif;
+	--qc-font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+	/* Spacing scale (4–96) */
+	--qc-space-1: 4px;
+	--qc-space-2: 8px;
+	--qc-space-3: 12px;
+	--qc-space-4: 16px;
+	--qc-space-5: 24px;
+	--qc-space-6: 32px;
+	--qc-space-7: 48px;
+	--qc-space-8: 64px;
+	--qc-space-9: 96px;
+
+	/* Layout */
+	--qc-max-width: 1280px;
+	--qc-gutter: 16px;
+	--qc-radius: 8px;
+}
+
+@media (min-width: 768px) {
+	:root {
+		--qc-gutter: 24px;
+	}
+}
+
+/* ---------- Typographic roles ---------- */
+
+.qc-display-1 {
+	font-family: var(--qc-font-display);
+	font-weight: 600;
+	font-size: 38px;
+	line-height: 42px;
+	letter-spacing: -0.02em;
+	color: var(--qc-ink-950);
+}
+
+.qc-heading-2 {
+	font-family: var(--qc-font-display);
+	font-weight: 600;
+	font-size: 30px;
+	line-height: 34px;
+	letter-spacing: -0.02em;
+	color: var(--qc-ink-950);
+}
+
+.qc-heading-3 {
+	font-family: var(--qc-font-display);
+	font-weight: 600;
+	font-size: 22px;
+	line-height: 27px;
+	letter-spacing: -0.01em;
+	color: var(--qc-ink-950);
+}
+
+.qc-body-lg {
+	font-family: var(--qc-font-ui);
+	font-weight: 400;
+	font-size: 17px;
+	line-height: 27px;
+	color: var(--qc-ink-700);
+}
+
+.qc-body {
+	font-family: var(--qc-font-ui);
+	font-weight: 400;
+	font-size: 16px;
+	line-height: 24px;
+	color: var(--qc-ink-700);
+}
+
+.qc-data {
+	font-family: var(--qc-font-ui);
+	font-weight: 600;
+	font-size: 14px;
+	line-height: 20px;
+	font-variant-numeric: tabular-nums;
+	color: var(--qc-ink-950);
+}
+
+.qc-label {
+	font-family: var(--qc-font-ui);
+	font-weight: 700;
+	font-size: 12px;
+	line-height: 16px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--qc-muted);
+}
+
+.qc-caption {
+	font-family: var(--qc-font-ui);
+	font-weight: 400;
+	font-size: 13px;
+	line-height: 19px;
+	color: var(--qc-muted);
+}
+
+@media (min-width: 768px) {
+	.qc-display-1 {
+		font-size: 64px;
+		line-height: 66px;
+		letter-spacing: -0.025em;
+	}
+	.qc-heading-2 {
+		font-size: 42px;
+		line-height: 46px;
+	}
+	.qc-heading-3 {
+		font-size: 24px;
+		line-height: 29px;
+	}
+	.qc-body-lg {
+		font-size: 18px;
+		line-height: 29px;
+	}
+}
+
+/* ---------- Surfaces ---------- */
+
+.qc-section {
+	background: var(--qc-surface);
+	padding: var(--qc-space-7) var(--qc-gutter);
+}
+
+.qc-container {
+	max-width: var(--qc-max-width);
+	margin-inline: auto;
+	width: 100%;
+}
+
+.qc-panel {
+	background: var(--qc-surface-subtle);
+	border: 1px solid var(--qc-border);
+	border-radius: var(--qc-radius);
+	padding: var(--qc-space-5);
+}
+
+/* Borders instead of shadows — brand-delta §3 "Характер" */
+.qc-card {
+	background: var(--qc-surface);
+	border: 1px solid var(--qc-border);
+	border-radius: var(--qc-radius);
+	padding: var(--qc-space-5);
+}
+
+/* ---------- CTA system (brand-delta §2.4) ---------- */
+
+.qc-cta {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--qc-space-2);
+	min-height: 48px;
+	padding: var(--qc-space-3) var(--qc-space-5);
+	border-radius: var(--qc-radius);
+	font-family: var(--qc-font-ui);
+	font-size: 16px;
+	font-weight: 600;
+	text-decoration: none;
+	cursor: pointer;
+	border: 1px solid transparent;
+	transition: background-color 120ms ease, color 120ms ease;
+}
+
+.qc-cta-primary {
+	background: var(--qc-sea-700);
+	color: #ffffff;
+}
+
+.qc-cta-primary:hover {
+	background: var(--qc-sea-800);
+}
+
+/* Detail primary is 50px per brand-delta §2.4 */
+.qc-cta-detail {
+	min-height: 50px;
+	width: 100%;
+}
+
+.qc-cta-secondary {
+	background: transparent;
+	color: var(--qc-sea-700);
+	border-color: var(--qc-border);
+}
+
+.qc-cta-secondary:hover {
+	background: var(--qc-sea-soft);
+}
+
+/* Neutral tone for requests about data we cannot confirm — no urgency */
+.qc-cta-neutral {
+	background: var(--qc-surface-subtle);
+	color: var(--qc-ink-950);
+	border-color: var(--qc-border);
+}
+
+.qc-cta-neutral:hover {
+	background: var(--qc-sea-soft);
+}
+
+.qc-cta:focus-visible,
+.qc-link:focus-visible {
+	outline: 3px solid var(--qc-focus);
+	outline-offset: 2px;
+}
+
+.qc-link {
+	color: var(--qc-sea-700);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+/* ---------- State copy surfaces (P1.2 baseline used by Slice A flows) ---------- */
+
+.qc-state {
+	border: 1px solid var(--qc-border);
+	border-radius: var(--qc-radius);
+	padding: var(--qc-space-4);
+	font-family: var(--qc-font-ui);
+	font-size: 16px;
+	line-height: 24px;
+}
+
+.qc-state-info {
+	background: var(--qc-surface-subtle);
+	color: var(--qc-ink-700);
+}
+
+.qc-state-success {
+	background: var(--qc-sea-soft);
+	color: var(--qc-ink-950);
+}
+
+.qc-state-warning {
+	background: var(--qc-warning-surface);
+	color: var(--qc-warning-text);
+	border-color: #e6d6a8;
+}
+
+.qc-state-error {
+	background: var(--qc-warning-surface);
+	color: var(--qc-warning-text);
+	border-color: #e6d6a8;
+}
+
+/* ---------- Motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+	.qc-cta {
+		transition: none;
+	}
+}

@@ -1,4 +1,5 @@
 @import './starter.css';
+@import '../lib/styles/quiet-coast.css';
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';

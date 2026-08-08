@@ -1,14 +1,30 @@
 <script>
+  /*
+   * Slice A (P0.1 + P0.3): the form now receives enquiry context and carries it
+   * through as hidden fields, so a request always says which object and which
+   * intent it came from.
+   *
+   * Explicitly out of scope here: delivery. The existing production endpoint is
+   * left exactly as it was — Slice A does not add email sending, a receiver or
+   * a CRM. That is Slice B (P0.5), and until it lands the delivery target below
+   * remains the one this branch already shipped with.
+   */
+  import { defaultMessageFor } from '$lib/enquiry.js';
+
   export let objectName = '';
+  export let objectId = '';
+  export let objectSlug = '';
+  export let intent = 'general_question';
+  export let scenario = '';
   export let url = '';
-  console.log("Props in FeedbackForm:", { objectName, url });
-  console.log("Received URL in feedback form:", url);
+
   let name = '';
   let phone = '+';
-  let message = objectName ? `Хочу заказать осмотр объекта: ${objectName}` : '';
+  let message = defaultMessageFor({ intent, objectName, scenario });
   let formErrors = {};
   let isSubmitting = false;
   let submissionResponse = '';
+  let submissionState = 'idle'; // idle | success | error
 
   $: formErrors.name = !name ? 'Введите имя.' : '';
   $: formErrors.phone = !phone ? 'Введите телефон.' : (!/^\+\d{1,15}$/.test(phone) ? 'Неверный формат телефона.' : '');
@@ -21,6 +37,7 @@
     const formData = new FormData(event.target);
     isSubmitting = true;
     submissionResponse = '';
+    submissionState = 'idle';
 
     try {
       const response = await fetch('https://usebasin.com/f/9f7c7790f8dd', {
@@ -32,13 +49,18 @@
       });
 
       if (response.ok) {
-        submissionResponse = 'Форма успешно отправлена.';
+        submissionState = 'success';
+        submissionResponse = objectName
+          ? `Заявка отправлена по объекту «${objectName}». Мы свяжемся с вами по указанному телефону.`
+          : 'Заявка отправлена. Мы свяжемся с вами по указанному телефону.';
         name = phone = message = ''; // Очистка формы после успешной отправки
       } else {
-        submissionResponse = 'Ошибка при отправке формы.';
+        submissionState = 'error';
+        submissionResponse = 'Не удалось отправить заявку. Проверьте данные и попробуйте ещё раз.';
       }
     } catch (error) {
-      submissionResponse = 'Ошибка сети при отправке формы.';
+      submissionState = 'error';
+      submissionResponse = 'Нет соединения с формой. Проверьте сеть и попробуйте ещё раз.';
     } finally {
       isSubmitting = false;
     }
@@ -67,8 +89,31 @@
       <span class={formErrors.message ? 'error-message' : 'error-message hidden'}>{formErrors.message}</span>
     </div>
   </div>
+  {#if objectName}
+    <p class="qc-caption object-context">Заявка по объекту: <strong>{objectName}</strong></p>
+  {:else if scenario}
+    <p class="qc-caption object-context">Заявка по задаче: <strong>{scenario}</strong></p>
+  {/if}
+
+  <!-- Enquiry context (Slice A). Carried with every request so the receiving
+       side knows the object and the intent without guessing. -->
   <input type="hidden" name="url" value={url} />
-  <button type="submit" className="submit-button mt-10" disabled={isSubmitting}>{isSubmitting ? 'Отправка...' : 'Отправить'}</button>
+  <input type="hidden" name="landing_url" value={url} />
+  <input type="hidden" name="object_id" value={objectId} />
+  <input type="hidden" name="object_slug" value={objectSlug} />
+  <input type="hidden" name="object_name" value={objectName} />
+  <input type="hidden" name="intent" value={intent} />
+  <input type="hidden" name="scenario" value={scenario} />
+
+  <button type="submit" class="submit-button mt-10" disabled={isSubmitting}>{isSubmitting ? 'Отправка...' : 'Отправить'}</button>
+
+  {#if isSubmitting}
+    <p class="form-status qc-state qc-state-info" role="status" aria-live="polite">Отправляем заявку…</p>
+  {:else if submissionState === 'success'}
+    <p class="form-status qc-state qc-state-success" role="status" aria-live="polite">{submissionResponse}</p>
+  {:else if submissionState === 'error'}
+    <p class="form-status qc-state qc-state-error" role="alert">{submissionResponse}</p>
+  {/if}
 </form>
 <slot />
 
@@ -82,9 +127,21 @@
         padding: 40px;
         width: auto;
         max-width: 500px;
-        min-width: 500px;
+        /* Slice A: min-width was 500px, which overflows any viewport under
+           500px until the 600px media query below kicks in. min() keeps the
+           desktop width while never exceeding the viewport. */
+        min-width: min(500px, 100%);
         margin: 10px auto;
         color: #f8f9fa; /* Светлый цвет текста */
+    }
+
+    .object-context {
+        margin: 0 0 8px;
+        color: #cfd8dc;
+    }
+
+    .form-status {
+        margin-top: 16px;
     }
 
     .field-container {
