@@ -1,15 +1,14 @@
 <script>
   /*
-   * Slice A (P0.1 + P0.3): the form now receives enquiry context and carries it
-   * through as hidden fields, so a request always says which object and which
-   * intent it came from.
+   * Slice A (P0.1 + P0.3) carried enquiry context. P0.5 changes where the
+   * request goes: the browser now POSTs same-origin JSON to /api/lead instead
+   * of posting a FormData straight to a third-party endpoint. No provider key
+   * exists in client code — the server holds it.
    *
-   * Explicitly out of scope here: delivery. The existing production endpoint is
-   * left exactly as it was — Slice A does not add email sending, a receiver or
-   * a CRM. That is Slice B (P0.5), and until it lands the delivery target below
-   * remains the one this branch already shipped with.
+   * The client still validates, but only for fast feedback. The server decides.
    */
-  import { defaultMessageFor } from '$lib/enquiry.js';
+  import { onMount } from 'svelte';
+  import { defaultMessageFor, readUtmParams } from '$lib/enquiry.js';
 
   export let objectName = '';
   export let objectId = '';
@@ -21,45 +20,98 @@
   let name = '';
   let phone = '+';
   let message = defaultMessageFor({ intent, objectName, scenario });
+  let website = ''; // honeypot — hidden from humans, tempting to bots
   let formErrors = {};
   let isSubmitting = false;
   let submissionResponse = '';
   let submissionState = 'idle'; // idle | success | error
+  let canRetry = false;
+
+  // When this form instance was rendered. The server compares it to now() to
+  // reject submissions that arrive implausibly fast.
+  let formStartedAt = 0;
+
+  /*
+   * One lead_id per logical enquiry, generated once and reused across retries.
+   * The server passes it to Resend as Idempotency-Key, so pressing "retry"
+   * after a timeout cannot produce a second notification for the same lead.
+   * Regenerated only after a confirmed success.
+   */
+  let leadId = '';
+
+  function newLeadId() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return '';
+  }
+
+  onMount(() => {
+    formStartedAt = Date.now();
+    leadId = newLeadId();
+  });
 
   $: formErrors.name = !name ? 'Введите имя.' : '';
-  $: formErrors.phone = !phone ? 'Введите телефон.' : (!/^\+\d{1,15}$/.test(phone) ? 'Неверный формат телефона.' : '');
+  $: formErrors.phone = !phone
+    ? 'Введите телефон.'
+    : (!/^\+\d{7,15}$/.test(phone.replace(/[\s()\-.]/g, '')) ? 'Неверный формат телефона. Пример: +359888123456' : '');
   $: formErrors.message = !message ? 'Оставьте сообщение.' : '';
 
   async function submitForm(event) {
     event.preventDefault();
     if (Object.values(formErrors).some(error => error)) return;
 
-    const formData = new FormData(event.target);
     isSubmitting = true;
     submissionResponse = '';
     submissionState = 'idle';
+    canRetry = false;
+
+    if (!leadId) leadId = newLeadId();
+
+    const body = {
+      lead_id: leadId,
+      name,
+      phone,
+      message,
+      website,
+      form_started_at: formStartedAt,
+      object_id: objectId,
+      object_slug: objectSlug,
+      object_name: objectName,
+      intent,
+      scenario,
+      landing_url: url || (typeof window !== 'undefined' ? window.location.href : ''),
+      ...readUtmParams()
+    };
 
     try {
-      const response = await fetch('https://usebasin.com/f/9f7c7790f8dd', {
+      const response = await fetch('/api/lead', {
         method: 'POST',
-        body: formData,
-        headers: {
-          'Accept': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(body)
       });
 
-      if (response.ok) {
+      const result = await response.json().catch(() => ({}));
+
+      if (response.ok && result.ok) {
         submissionState = 'success';
         submissionResponse = objectName
-          ? `Заявка отправлена по объекту «${objectName}». Мы свяжемся с вами по указанному телефону.`
-          : 'Заявка отправлена. Мы свяжемся с вами по указанному телефону.';
-        name = phone = message = ''; // Очистка формы после успешной отправки
+          ? `${result.message || 'Заявка отправлена.'} Объект: «${objectName}».`
+          : result.message || 'Заявка отправлена.';
+        name = phone = message = '';
+        // New enquiry from here on, so a fresh id and timer.
+        leadId = newLeadId();
+        formStartedAt = Date.now();
       } else {
         submissionState = 'error';
-        submissionResponse = 'Не удалось отправить заявку. Проверьте данные и попробуйте ещё раз.';
+        canRetry = result.retryable === true;
+        if (result.errors) {
+          formErrors = { ...formErrors, ...result.errors };
+        }
+        submissionResponse =
+          result.message || 'Не удалось отправить заявку. Проверьте данные и попробуйте ещё раз.';
       }
     } catch (error) {
       submissionState = 'error';
+      canRetry = true;
       submissionResponse = 'Нет соединения с формой. Проверьте сеть и попробуйте ещё раз.';
     } finally {
       isSubmitting = false;
@@ -95,15 +147,17 @@
     <p class="qc-caption object-context">Заявка по задаче: <strong>{scenario}</strong></p>
   {/if}
 
-  <!-- Enquiry context (Slice A). Carried with every request so the receiving
-       side knows the object and the intent without guessing. -->
-  <input type="hidden" name="url" value={url} />
-  <input type="hidden" name="landing_url" value={url} />
-  <input type="hidden" name="object_id" value={objectId} />
-  <input type="hidden" name="object_slug" value={objectSlug} />
-  <input type="hidden" name="object_name" value={objectName} />
-  <input type="hidden" name="intent" value={intent} />
-  <input type="hidden" name="scenario" value={scenario} />
+  <!--
+    Honeypot. Off-screen rather than display:none, because some bots skip
+    hidden inputs. Hidden from assistive tech and from tab order, so a human
+    using the form (including with a screen reader) never reaches it.
+    P0.5: enquiry context is no longer sent as hidden inputs — the submit
+    handler builds a JSON body, so duplicating it in the DOM would be dead code.
+  -->
+  <div class="hp-field" aria-hidden="true">
+    <label for="website">Не заполняйте это поле</label>
+    <input id="website" type="text" name="website" bind:value={website} tabindex="-1" autocomplete="off" />
+  </div>
 
   <button type="submit" class="submit-button mt-10" disabled={isSubmitting}>{isSubmitting ? 'Отправка...' : 'Отправить'}</button>
 
@@ -112,7 +166,13 @@
   {:else if submissionState === 'success'}
     <p class="form-status qc-state qc-state-success" role="status" aria-live="polite">{submissionResponse}</p>
   {:else if submissionState === 'error'}
-    <p class="form-status qc-state qc-state-error" role="alert">{submissionResponse}</p>
+    <p class="form-status qc-state qc-state-error" role="alert">
+      {submissionResponse}
+      {#if canRetry}
+        <br />
+        <span class="retry-note">Данные сохранены в форме — нажмите «Отправить» ещё раз.</span>
+      {/if}
+    </p>
   {/if}
 </form>
 <slot />
@@ -142,6 +202,22 @@
 
     .form-status {
         margin-top: 16px;
+    }
+
+    .retry-note {
+        display: inline-block;
+        margin-top: 4px;
+        font-size: 14px;
+    }
+
+    /* Honeypot: moved out of view rather than display:none, and kept out of the
+       tab order and the accessibility tree. */
+    .hp-field {
+        position: absolute;
+        left: -9999px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
     }
 
     .field-container {

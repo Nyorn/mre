@@ -60,6 +60,27 @@ export function openEnquiry(context) {
 }
 
 /**
+ * Read UTM parameters from the current URL, when present.
+ *
+ * "При наличии" is literal: nothing is invented and nothing is persisted here.
+ * If the visitor arrived without campaign parameters the fields stay empty and
+ * the server simply omits them from the notification.
+ */
+export function readUtmParams() {
+	if (typeof window === 'undefined') return {};
+	const params = new URLSearchParams(window.location.search);
+	const pick = (key) => (params.get(key) || '').slice(0, 160);
+	return {
+		utm_source: pick('utm_source'),
+		utm_medium: pick('utm_medium'),
+		utm_campaign: pick('utm_campaign'),
+		utm_content: pick('utm_content'),
+		utm_term: pick('utm_term'),
+		content_id: pick('content_id')
+	};
+}
+
+/**
  * Prefilled message text. Kept honest: for an object we name the object, for a
  * scenario we name the scenario, and we never assert anything about price,
  * availability or yield on the user's behalf.
