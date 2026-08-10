@@ -255,16 +255,19 @@
 
 <style>
     /*
-     * P1: Quiet Coast surface. This was a dark panel (#2a2e35) with near-black
-     * fields and a pink error colour — the visual legacy the redesign removes
-     * everywhere else, still showing up in the one place a visitor actually
-     * converts. Borders instead of shadows, per brand-delta.v1 §3.
+     * ONE SURFACE OWNER.
+     *
+     * The form used to paint its own panel and border. Inside the modal — which
+     * also paints a surface and a border — that produced two nested frames, and
+     * Cypress read the inner one as a second, unexplained container. The dialog
+     * now owns surface, border, radius and padding; the form is transparent and
+     * only lays out its fields. On /contacts, where the form is embedded
+     * directly in the page, the section around it is the surface owner instead.
      */
     .feedback-form {
-        background: var(--qc-surface, #fffdf8);
-        border: 1px solid var(--qc-border, #d7e1df);
-        border-radius: var(--qc-radius, 8px);
-        padding: 32px 24px;
+        background: transparent;
+        border: 0;
+        padding: 0;
         width: auto;
         max-width: 500px;
         color: var(--qc-ink-700, #344e54);
@@ -341,16 +344,18 @@
         margin-bottom: 8px;
     }
     /*
-     * Errors are in normal flow with a reserved multi-line area.
+     * Errors are in normal flow, and reserve NOTHING while hidden.
      *
-     * They used to be position: absolute at bottom: -10px, so the phone
-     * message — the only one long enough to wrap — overlapped the field below
-     * at 320 and 390. Reserving two lines means the message appears without
-     * moving anything and a two-line message has somewhere to go.
+     * History worth keeping: they were position:absolute at bottom:-10px, so
+     * the phone message — the only one long enough to wrap — overlapped the
+     * next field at 320/390. Moving them into flow fixed the overlap, but the
+     * two-line reservation I added then cost ~38px per field, ~114px of empty
+     * space in a form that is valid. `display: none` while hidden removes that;
+     * being in normal flow, a message that appears pushes content down instead
+     * of covering it, which is the behaviour that mattered.
      */
     .error-message {
         display: block;
-        min-height: 38px;
         /* #e83e8c on the old dark panel; on a light surface it is 3.4:1, so the
            error text moves to the warning ink, which is 7.5:1 here. */
         color: var(--qc-warning-text, #604c12);
@@ -359,9 +364,9 @@
         line-height: 19px;
         margin-top: 4px;
     }
-    /* Reserved space is kept when empty, so showing an error moves nothing. */
+    /* No reserved space: hidden errors take no room at all. */
     .error-message.hidden {
-        visibility: hidden;
+        display: none;
     }
 
     .submit-button {

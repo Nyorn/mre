@@ -35,11 +35,26 @@
   /* Accessible name per modal type. A dialog without a name is an unlabelled
      region; screen readers announce "dialog" and nothing else. */
   const NAMES = {
-    feedback: 'Форма заявки',
+    // Visible heading as well as the accessible name, so it reads as an action.
+    feedback: 'Оставить заявку',
     objectCard: 'Карточка объекта',
     imageView: 'Просмотр изображения'
   };
   $: dialogName = (top && NAMES[top.type]) || 'Диалог';
+
+  /*
+   * Short context under the heading, for the feedback dialog only. It tells the
+   * visitor which object or task the request will be attached to — the same
+   * fact the form used to state in a lone line with no heading above it.
+   */
+  $: dialogContext =
+    top && top.type === 'feedback'
+      ? top.data.objectName
+        ? `Объект: ${top.data.objectName}`
+        : top.data.scenario
+          ? `Задача: ${top.data.scenario}`
+          : ''
+      : '';
 
   function focusableIn(root) {
     if (!root) return [];
@@ -164,7 +179,7 @@
       data-preview-theme={$previewTheme || null}
       role="dialog"
       aria-modal="true"
-      aria-label={dialogName}
+      aria-labelledby="modal-title"
       tabindex="-1"
       bind:this={dialogEl}
       on:keydown={onKeydown}
@@ -176,6 +191,22 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
+
+      <!--
+        The dialog owns the surface AND the heading.
+
+        Before: the modal painted a surface and the form painted a second one
+        inside it, so the enquiry showed two stacked frames; and the dialog was
+        named by aria-label, i.e. a name screen readers announced but sighted
+        users never saw. A visible <h2> referenced by aria-labelledby serves
+        both, and is the accessible name.
+      -->
+      <div class="modal-head">
+        <h2 id="modal-title" class="modal-title">{dialogName}</h2>
+        {#if dialogContext}
+          <p class="modal-context">{dialogContext}</p>
+        {/if}
+      </div>
 
       <div class="modal-content">
         {#if top.type === 'feedback'}
@@ -228,7 +259,13 @@
   .modal-window {
     position: relative;
     background: var(--qc-surface, #ffffff);
-    border: 1px solid var(--qc-border, transparent);
+    border: 1px solid var(--qc-border, #d7e1df);
+    /*
+     * Explicit, readable colour. This inherited white from the legacy dark
+     * theme, so any text placed in the dialog outside the form was white on a
+     * cream surface — invisible. Set here so the dialog is safe by default.
+     */
+    color: var(--qc-ink-700, #344e54);
     border-radius: var(--qc-radius, 18px);
     max-width: min(560px, 100%);
     width: 100%;
@@ -241,8 +278,30 @@
     outline: none;
   }
 
+  .modal-head {
+    padding: 20px 56px 0 20px; /* right padding clears the 44px close button */
+  }
+
+  .modal-title {
+    margin: 0;
+    font-family: var(--qc-font-display, Georgia, serif);
+    font-size: 22px;
+    line-height: 27px;
+    font-weight: 600;
+    color: var(--qc-ink-950, #102a30);
+  }
+
+  .modal-context {
+    margin: 6px 0 0;
+    font-family: var(--qc-font-ui, system-ui, sans-serif);
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--qc-ink-700, #344e54);
+    word-break: break-word;
+  }
+
   .modal-content {
-    padding: 8px;
+    padding: 0 20px 20px;
   }
 
   .close-button {

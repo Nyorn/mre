@@ -625,6 +625,17 @@ async function checkLeadForm(ws, label) {
         nameDescribed: name ? name.getAttribute('aria-describedby') : null,
         nameH: name ? Math.round(name.getBoundingClientRect().height) : 0,
         formBg: getComputedStyle(form).backgroundColor,
+        dialogSurface: (() => { const d = document.querySelector('[role="dialog"]'); return d ? getComputedStyle(d).backgroundColor : null; })(),
+        dialogLabelledBy: (() => { const d = document.querySelector('[role="dialog"]'); return d ? d.getAttribute('aria-labelledby') : null; })(),
+        dialogHeadingText: (() => {
+          const d = document.querySelector('[role="dialog"]');
+          const id = d && d.getAttribute('aria-labelledby');
+          const h = id && document.getElementById(id);
+          return h ? h.textContent.trim() : null;
+        })(),
+        hiddenErrorSpace: [...form.querySelectorAll('.error-message')]
+          .filter((el) => !el.textContent.trim())
+          .reduce((sum, el) => sum + Math.round(el.getBoundingClientRect().height), 0),
         submit: submit ? { c: cs(submit), h: Math.round(submit.getBoundingClientRect().height) } : null,
         label: cs(form.querySelector('label[for="name"]')),
         input: cs(name)
@@ -644,7 +655,35 @@ async function checkLeadForm(ws, label) {
 	record(!initial.nameDescribed, label,
 		`untouched field points at an error via aria-describedby=${initial.nameDescribed}`);
 	record(initial.nameH >= 44, label, `input is ${initial.nameH}px tall, below the 44px target`);
-	record(!/rgba\(0, 0, 0, 0\)/.test(initial.formBg), label, 'form has no painted surface');
+	/*
+	 * ONE surface owner. The dialog paints surface+border; the form is
+	 * transparent. Previously both did, producing two nested frames.
+	 */
+	record(
+		/rgba\(0, 0, 0, 0\)/.test(initial.formBg),
+		label,
+		`form paints its own surface (${initial.formBg}) — the dialog should own it`
+	);
+	record(
+		!!initial.dialogSurface && !/rgba\(0, 0, 0, 0\)/.test(initial.dialogSurface),
+		label,
+		`dialog has no painted surface (${initial.dialogSurface})`
+	);
+	record(
+		!!initial.dialogLabelledBy,
+		label,
+		'dialog is not named by a visible heading (aria-labelledby missing)'
+	);
+	record(
+		!!initial.dialogHeadingText,
+		label,
+		'dialog heading referenced by aria-labelledby has no text'
+	);
+	record(
+		initial.hiddenErrorSpace <= 8,
+		label,
+		`hidden errors reserve ${initial.hiddenErrorSpace}px of dead space (should be ~0)`
+	);
 	record(initial.label && initial.label.ratio >= AA_NORMAL, label,
 		`form label contrast ${initial.label?.ratio?.toFixed(2)} < ${AA_NORMAL}`);
 	record(initial.input && initial.input.ratio >= AA_NORMAL, label,

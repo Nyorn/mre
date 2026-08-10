@@ -1,5 +1,4 @@
-import { error } from '@sveltejs/kit'
-import { contentfulFetch } from '$lib/contentful-fetch';
+import { contentfulFetch, resolveCmsFailure } from '$lib/contentful-fetch';
 
 const query = `
 {
@@ -54,22 +53,20 @@ const query = `
 `
 
 export async function load() {
-  console.log("Начало загрузки данных из Contentful");
+  const response = await contentfulFetch(query);
 
-  try {
-    const response = await contentfulFetch(query);
-    console.log("Данные получены от Contentful:", JSON.stringify(response, null, 2));
-
-    if (!response.ok || !response.data || !response.data.objectCollection) {
-      throw new Error('Ответ не содержит коллекции объектов');
-    }
-
-    const { items } = response.data.objectCollection;
-    console.log("Полученные элементы из коллекции объектов:", items);
-
-    return { objects: items };
-  } catch (e) {
-    console.error("Ошибка в функции load:", e);
-    throw error(500, 'Внутренняя ошибка сервера');
+  /*
+   * A CMS outage is not a server error for the visitor: it is a page that
+   * cannot list objects right now. Throwing 500 dropped them into the framework
+   * error shell with no header, no footer and no way to reach us. Returning a
+   * described failure lets +page.svelte render it inside the site shell with a
+   * retry and a route to the enquiry form.
+   *
+   * Nothing about the credential or the response body travels in this object.
+   */
+  if (!response.ok || !response.data || !response.data.objectCollection) {
+    return { objects: [], cmsError: resolveCmsFailure(response) };
   }
+
+  return { objects: response.data.objectCollection.items, cmsError: null };
 }

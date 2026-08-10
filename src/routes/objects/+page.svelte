@@ -4,6 +4,7 @@
   import FilterBar from '../../lib/FilterBar.svelte';
   import FullFilterModal from '../../lib/FullFilterModal.svelte';
   import SortModal from '../../lib/SortModal.svelte';
+  import CmsUnavailable from '$lib/CmsUnavailable.svelte';
 
   import { onMount } from 'svelte';
 
@@ -11,12 +12,13 @@
   let loading = true; // Переменная для контроля отображения прелоадера
   let showSortModal = false;
   let showModal = false;
-  let filteredData = data.objects; // Инициализация с полным списком объектов
+  // An outage yields an empty list plus data.cmsError; both paths must be safe.
+  let filteredData = data.objects || [];
   console.log("Данные объектов:", data.objects);
   let sortOptions = {}; // Добавьте этот объект для хранения опций сортировки
   let lastFilterOptions = {};
   let loadedImagesCount = 0;
-  let totalImagesCount = data.objects.length;
+  let totalImagesCount = (data.objects || []).length;
 
   function handleImageLoaded() {
     loadedImagesCount++;
@@ -190,6 +192,7 @@
   });
 
 </script>
+
 <svelte:head>
 
 
@@ -198,10 +201,11 @@
   <meta name="description" content="Ищете квартиру в Обзоре, Бяле или Равде? Золотых песках, на Солнечном берегу или Святом Власе? Обширный выбор недвижимости от Sea Real Estate. Охраняемые комплексы, бассейны, фитнес и многое другое" />
 
 
-
-
 </svelte:head>
 
+{#if data.cmsError}
+  <CmsUnavailable failure={data.cmsError} level={1} />
+{:else}
 
 
 <FilterBar on:filter={handleFilter} on:sort={handleSort} on:open-full-filters={openFullFilters} />
@@ -215,6 +219,7 @@
     <Card object={object} on:loaded={handleImageLoaded}/>
   {/each}
 </section>
+{/if}
 
 <style>
     section {

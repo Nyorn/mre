@@ -151,15 +151,64 @@ test('the home page no longer forces a wait or locks body scroll', () => {
 	assert.equal(/new Image\(/.test(home), false, 'home still preloads images imperatively');
 });
 
-test('the layout keeps the forced preloader off the home route', () => {
-	// Preloader.svelte is shared and must survive for the other routes; what
-	// changed is that home never triggers it.
-	const layout = readFileSync(path.join(srcDir, 'routes', '+layout.svelte'), 'utf8');
-	assert.match(layout, /\{#if \$loading && !isHome\}/);
-	assert.match(layout, /isHome = \$page\.route\?\.id === '\/'/);
+test('no route renders the artificial timer preloader any more', () => {
+	/*
+	 * Every route is server-rendered, so a 1500ms timer that hides finished
+	 * content — and locked body scroll while it ran — is pure added latency.
+	 * The shared component file survives (deleting it is a separate decision),
+	 * but nothing may render it and nothing may schedule the wait.
+	 */
+	const layout = stripComments(
+		readFileSync(path.join(srcDir, 'routes', '+layout.svelte'), 'utf8')
+	);
+
+	assert.equal(/<Preloader/.test(layout), false, 'the layout still renders Preloader');
+	assert.equal(/setTimeout/.test(layout), false, 'the layout still schedules a forced wait');
+	assert.equal(/no-scroll'\)/.test(layout) && /add\(/.test(layout), false, 'the layout still locks scroll');
+
+	// Shared modules survive for whoever else may need them.
 	assert.ok(existsSync(path.join(libDir, 'Preloader.svelte')), 'shared Preloader was deleted');
 	assert.ok(existsSync(path.join(libDir, 'Carousel.svelte')), 'shared Carousel was deleted');
 	assert.ok(existsSync(path.join(libDir, 'InfoBlock.svelte')), 'shared InfoBlock was deleted');
+});
+
+test('contacts and about render their own Quiet Coast shell', () => {
+	const layout = stripComments(
+		readFileSync(path.join(srcDir, 'routes', '+layout.svelte'), 'utf8')
+	);
+	assert.match(layout, /OWN_SHELL_ROUTES = \['\/', '\/contacts', '\/about'\]/);
+
+	for (const route of ['contacts', 'about']) {
+		const source = readFileSync(path.join(srcDir, 'routes', route, '+page.svelte'), 'utf8');
+		assert.match(source, /QuietCoastHeader/, `${route} has no Quiet Coast header`);
+		assert.match(source, /QuietCoastFooter/, `${route} has no Quiet Coast footer`);
+		assert.match(source, /qc-skip-link/, `${route} has no skip link`);
+		assert.match(source, /<main id="main">/, `${route} has no main landmark`);
+	}
+});
+
+test('contacts and about carry no starter-template leftovers', () => {
+	for (const route of ['contacts', 'about']) {
+		const source = stripComments(
+			readFileSync(path.join(srcDir, 'routes', route, '+page.svelte'), 'utf8')
+		);
+		for (const pattern of [
+			/flowbite\.com/i,
+			/tailwindcss\.com/i,
+			/support@mail\.com/i,
+			/linear-gradient/i,
+			/backdrop-filter/i,
+			/fonts\.googleapis\.com/i,
+			/#3800e7/i,
+			/#8a15ff/i
+		]) {
+			assert.equal(
+				pattern.test(source),
+				false,
+				`src/routes/${route}/+page.svelte still matches ${pattern}`
+			);
+		}
+	}
 });
 
 test('no home surface ships a dead "#" link', () => {

@@ -20,6 +20,7 @@
 	 */
 	import Carousel from '$lib/Carousel.svelte';
 	import { openEnquiry, INTENT } from '$lib/enquiry.js';
+	import CmsUnavailable from '$lib/CmsUnavailable.svelte';
 
 	export let data;
 
@@ -67,6 +68,11 @@
 	<title>{title}</title>
 	<meta name="description" content={description} />
 </svelte:head>
+
+{#if data.cmsError}
+	<CmsUnavailable failure={data.cmsError} level={1} />
+{:else}
+
 
 {#if object}
 	<div class="qc-container detail-page">
@@ -139,6 +145,7 @@
 			<a class="qc-link" href="/objects">Вернуться в каталог</a>.
 		</p>
 	</div>
+{/if}
 {/if}
 
 <style>

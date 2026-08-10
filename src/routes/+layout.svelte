@@ -7,10 +7,12 @@
    * other route keeps the existing chrome untouched — this is a gate, not a
    * rewrite, and nothing shared is deleted.
    *
-   * The forced 1500ms preloader is also gated. It is a hard wait before first
-   * paint, applied to every route, and removing it from home is the point of
-   * the slice; leaving it in place for the other routes keeps their behaviour
-   * byte-for-byte what it was.
+   * The artificial 1500ms preloader is GONE, not merely gated. Every route in
+   * this app is server-rendered: the HTML arrives complete, so a timer that
+   * hides finished content for a second and a half is pure added latency, and
+   * it also locked body scroll while it ran. Preloader.svelte itself is kept —
+   * it is a shared module and deleting it is a separate decision — but nothing
+   * renders it any more.
    */
   import Modal from '$lib/Modal.svelte'
   import Footer from '../lib/Footer.svelte'
@@ -18,13 +20,11 @@
   import { modalStack } from '$lib/store.js';
   import ScrollToTopButton from '../lib/ScrollToTopButton.svelte';
   import '@fortawesome/fontawesome-free/css/all.css';
-  import Preloader from '$lib/Preloader.svelte';
   import { setContext, onMount } from 'svelte';
   import { loading } from '$lib/store.js';
   import { page } from '$app/stores';
   import Icon from 'svelte-awesome/components/Icon.svelte';
   import phone from 'svelte-awesome/icons/phone';
-  let preloader;
   setContext('loading', loading);
 
   /*
@@ -36,21 +36,21 @@
   export let data;
   $: analyticsEnabled = data?.analyticsEnabled === true;
 
+  /*
+   * Routes that render their own Quiet Coast header/main/footer. They get the
+   * bare slot so the skip link can be the first focusable element and there is
+   * exactly one <main>. Everything still on the legacy chrome — /objects,
+   * object detail, /404 — keeps Nav/main/Footer untouched.
+   */
+  const OWN_SHELL_ROUTES = ['/', '/contacts', '/about'];
   $: isHome = $page.route?.id === '/';
+  $: ownsShell = OWN_SHELL_ROUTES.includes($page.route?.id);
 
   onMount(() => {
-    if (isHome) {
-      // No forced wait and no scroll lock on the home route.
-      loading.set(false);
-      document.body.classList.remove('no-scroll');
-    } else {
-      loading.set(true);
-      document.body.classList.add('no-scroll');
-      setTimeout(() => {
-        loading.set(false);
-        document.body.classList.remove('no-scroll');
-      }, 1500);
-    }
+    // No forced wait and no scroll lock anywhere: the server already sent the
+    // finished page. The store is cleared for any component still reading it.
+    loading.set(false);
+    document.body.classList.remove('no-scroll');
 
     if (analyticsEnabled) {
       window.dataLayer = window.dataLayer || [];
@@ -82,16 +82,13 @@
 <!-- Google Tag Manager (noscript) -->
 
 <!-- End Google Tag Manager (noscript) -->
-{#if $loading && !isHome}
-<Preloader bind:this={preloader} />
-{/if}
 {#if analyticsEnabled}
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-57S8XWJV"
                   height="0" width="0" style="display:none;visibility:hidden" title="Google Tag Manager"></iframe></noscript>
 {/if}
 
-{#if isHome}
-  <!-- Home renders its own header/main/footer; see src/routes/+page.svelte. -->
+{#if ownsShell}
+  <!-- These routes render their own header/main/footer (Quiet Coast shell). -->
   <slot />
 {:else}
   <Nav />
@@ -103,7 +100,7 @@
 
 <Modal />
 
-{#if !isHome}
+{#if !ownsShell}
   <button type="button" class="callback text-white bg-gradient-to-r from-teal-400 via-teal-500 to-teal-600 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-teal-300 dark:focus:ring-teal-800 shadow-lg shadow-teal-500/50 dark:shadow-lg dark:shadow-teal-800/80 font-medium rounded-lg text-sm  text-center me-2 mb-2 fixed bottom-5 right-10" button on:click={() => modalStack.open('feedback', {})}>
     <Icon data={phone} style="width: 30px; height: 30px;"/>
   </button>

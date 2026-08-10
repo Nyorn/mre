@@ -1,0 +1,51 @@
+/*
+ * The Quiet Coast page shell: wrapper surface and skip link.
+ *
+ * Extracted from the home page's scoped styles so /contacts and /about can use
+ * the identical shell instead of copying it. Global on purpose — three routes
+ * render the same structure and must not drift.
+ *
+ * The wrapper is opaque and full height because global.css paints two radial
+ * gradients on <body> with background-attachment: fixed. Rather than editing a
+ * global that the legacy routes still depend on, these pages cover it.
+ *
+ * No overflow-x: hidden here. That masks horizontal overflow instead of
+ * removing it; overflow is prevented at the source (min-width: 0 on flex/grid
+ * children, no forced word breaks) and asserted at 320/390 by the QA script.
+ */
+
+.qc-home {
+	position: relative;
+	min-height: 100vh;
+	background: var(--qc-surface);
+	font-family: var(--qc-font-ui);
+	color: var(--qc-ink-700);
+}
+
+.qc-home main {
+	display: block;
+}
+
+.qc-skip-link {
+	position: absolute;
+	/*
+	 * Translated out of view rather than parked at left: -9999px, which was
+	 * itself real horizontal overflow measurable at 320px.
+	 */
+	left: 0;
+	top: 0;
+	transform: translateY(-200%);
+	z-index: 1300;
+	padding: 12px 16px;
+	background: var(--qc-surface);
+	color: var(--qc-ink-950);
+	border: 2px solid var(--qc-focus);
+	border-radius: 0 0 6px 0;
+	font-family: var(--qc-font-ui);
+	font-size: 16px;
+	text-decoration: none;
+}
+
+.qc-skip-link:focus {
+	transform: translateY(0);
+}
