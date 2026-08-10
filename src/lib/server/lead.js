@@ -195,17 +195,22 @@ export function validateLead(payload) {
 }
 
 /**
- * Anti-spam. Returns a reason string when the submission should be dropped.
+ * Anti-spam. Returns a reason string when the submission must not be sent.
  *
- * Known limitation, stated rather than hidden: `form_started_at` is supplied by
- * the client and can be forged. It stops naive bots and instant replays, not a
+ * `form_started_at` is REQUIRED (P1). Previously an absent value was tolerated,
+ * which meant the cheapest possible abuse — a raw scripted POST that simply
+ * omits the field — skipped the timing check entirely. A real form always sends
+ * it, so its absence is itself a signal.
+ *
+ * Known limitation, stated rather than hidden: the value is supplied by the
+ * client and can be forged. It stops naive bots and instant replays, not a
  * determined attacker. A signed server-issued token would be stronger and is
  * listed as follow-up work in the doc.
  */
 export function spamReason(payload, now = Date.now()) {
 	if (payload.website) return 'honeypot';
 	const started = payload.form_started_at;
-	if (!started || !Number.isFinite(started)) return null; // absent: do not punish
+	if (!started || !Number.isFinite(started) || started <= 0) return 'missing_timing';
 	const elapsed = now - started;
 	if (elapsed < 0) return null; // clock skew - not evidence of a bot
 	if (elapsed < MIN_FILL_MS) return 'too_fast';
@@ -232,8 +237,20 @@ export function intentLabel(intent) {
  * Every lead-controlled value is HTML-escaped for the html part, and the
  * subject is header-sanitized. The subject is built from object/scenario, both
  * of which are lead-influenced, so it must never be passed through raw.
+ *
+ * BYTE-STABILITY (P0 idempotency): this function must be a pure function of
+ * `payload`, `phone` and `leadId`. No timestamp, no random value, nothing read
+ * from the clock or the environment may enter the output, because the result
+ * becomes the request body sent to Resend under a fixed Idempotency-Key. If two
+ * retries of the same lead produced different bytes, Resend would answer 409
+ * instead of collapsing the duplicate.
+ *
+ * That is why there is no "received at" row: a per-request timestamp is exactly
+ * the kind of changing server material that breaks it. The moment the provider
+ * accepted the message is recorded by the message's own Date header, which is
+ * authoritative and costs us nothing.
  */
-export function buildEmail({ payload, phone, leadId, receivedAt }) {
+export function buildEmail({ payload, phone, leadId }) {
 	const topic = payload.object_name || payload.scenario || intentLabel(payload.intent);
 	const subject = sanitizeHeaderValue(
 		`Заявка Sea Estate — ${topic} [${String(leadId).slice(0, 8)}]`,
@@ -255,9 +272,13 @@ export function buildEmail({ payload, phone, leadId, receivedAt }) {
 		['utm_campaign', payload.utm_campaign],
 		['utm_content', payload.utm_content],
 		['utm_term', payload.utm_term],
-		['Согласие получено', payload.consent ? 'да' : 'не запрашивалось'],
-		['lead_id', leadId],
-		['Принято (UTC)', receivedAt]
+		// Technical form flag only. The site currently has no approved consent
+		// text, so this row must never be read as legal evidence of consent.
+		[
+			'Флаг consent (техническое поле формы, не юридическое подтверждение)',
+			payload.consent ? 'установлен' : 'не установлен'
+		],
+		['lead_id', leadId]
 	].filter(([, v]) => v !== '' && v !== null && v !== undefined);
 
 	const htmlRows = rows
@@ -278,17 +299,86 @@ export function buildEmail({ payload, phone, leadId, receivedAt }) {
 			payload.message
 		)}</div>` +
 		`<p style="margin:16px 0 0;font-size:13px;color:#62777c;">` +
-		`Это уведомление — единственная копия заявки: сервер её не хранит. ` +
-		`Ответьте по указанному телефону.</p>` +
+		`Сервер сайта не хранит копию этой заявки.</p>` +
 		`</div>`;
 
 	const text =
 		'Новая заявка с сайта Sea Estate.\n\n' +
 		rows.map(([k, v]) => `${k}: ${v}`).join('\n') +
 		`\n\nСообщение:\n${payload.message}\n\n` +
-		'Это уведомление — единственная копия заявки: сервер её не хранит.\n';
+		'Сервер сайта не хранит копию этой заявки.\n';
 
 	return { subject, html, text };
+}
+
+export const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+export const RESEND_TIMEOUT_MS = 10000;
+
+/**
+ * Serialize the exact bytes sent to Resend for a given lead.
+ *
+ * Deterministic by construction: fixed key order, and every value derives from
+ * the payload, the phone and the lead id. Two calls with equal inputs produce
+ * an identical string, which is what makes the Idempotency-Key meaningful.
+ */
+export function buildResendRequestBody({ payload, phone, leadId, from, to }) {
+	const { subject, html, text } = buildEmail({ payload, phone, leadId });
+	return JSON.stringify({ from, to: [to], subject, html, text });
+}
+
+/**
+ * Map a Resend HTTP status onto what we tell the caller.
+ *
+ * 409 is the interesting one. Resend answers it when the same Idempotency-Key
+ * arrives with a *different* body — i.e. the visitor edited the form and
+ * resubmitted. The first message was already sent, so this is neither a
+ * delivery failure nor a duplicate to swallow: the honest outcome is "the
+ * previous version was already sent, this edit needs a new lead id".
+ */
+export function classifyResendOutcome(status) {
+	if (status >= 200 && status < 300) return 'sent';
+	if (status === 409) return 'conflict_modified';
+	if (status === 429 || status >= 500) return 'retryable';
+	return 'permanent';
+}
+
+/**
+ * Send one lead through Resend.
+ *
+ * `fetchImpl` is injected so tests can drive every branch — including two
+ * repeated POSTs — without network access, a provider key, or a real send.
+ */
+export async function deliverLead({
+	payload,
+	phone,
+	leadId,
+	apiKey,
+	from,
+	to,
+	fetchImpl = fetch,
+	endpoint = RESEND_ENDPOINT,
+	timeoutMs = RESEND_TIMEOUT_MS
+}) {
+	const body = buildResendRequestBody({ payload, phone, leadId, from, to });
+
+	let response;
+	try {
+		response = await fetchImpl(endpoint, {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${apiKey}`,
+				'Content-Type': 'application/json',
+				// Same lead_id + same bytes => Resend collapses the duplicate.
+				'Idempotency-Key': leadId
+			},
+			body,
+			signal: AbortSignal.timeout(timeoutMs)
+		});
+	} catch {
+		return { outcome: 'unreachable', status: 0, body };
+	}
+
+	return { outcome: classifyResendOutcome(response.status), status: response.status, body };
 }
 
 /**

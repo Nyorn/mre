@@ -59,8 +59,7 @@ test('a lead-controlled object name cannot inject a header into the subject', ()
 	const { subject } = buildEmail({
 		payload,
 		phone: '+359888123456',
-		leadId: '11111111-2222-4333-8444-555555555555',
-		receivedAt: '2026-08-09T00:00:00.000Z'
+		leadId: '11111111-2222-4333-8444-555555555555'
 	});
 	assert.ok(!subject.includes(CR));
 	assert.ok(!subject.includes(LF));
@@ -88,8 +87,7 @@ test('email body escapes lead-controlled values', () => {
 	const { html, text } = buildEmail({
 		payload,
 		phone: '+359888123456',
-		leadId: '11111111-2222-4333-8444-555555555555',
-		receivedAt: '2026-08-09T00:00:00.000Z'
+		leadId: '11111111-2222-4333-8444-555555555555'
 	});
 	assert.ok(!html.includes('<img src=x'), 'raw tag must not reach the html body');
 	assert.ok(html.includes('&lt;img src=x'));
@@ -186,9 +184,14 @@ test('a very old form is treated as stale', () => {
 	assert.equal(spamReason(payload, now), 'stale_form');
 });
 
-test('a missing timestamp is not punished, and clock skew is tolerated', () => {
+test('a missing timestamp is now rejected (raw scripted POSTs omit it)', () => {
 	const now = 1_000_000_000;
-	assert.equal(spamReason(normalizePayload({}), now), null);
+	assert.equal(spamReason(normalizePayload({}), now), 'missing_timing');
+	assert.equal(spamReason(normalizePayload({ form_started_at: 0 }), now), 'missing_timing');
+});
+
+test('clock skew is still tolerated', () => {
+	const now = 1_000_000_000;
 	assert.equal(spamReason(normalizePayload({ form_started_at: now + 60_000 }), now), null);
 });
 
@@ -231,14 +234,14 @@ test('the notification never claims the lead was stored or guaranteed', () => {
 	const { html, text } = buildEmail({
 		payload,
 		phone: '+359888123456',
-		leadId: '11111111-2222-4333-8444-555555555555',
-		receivedAt: '2026-08-09T00:00:00.000Z'
+		leadId: '11111111-2222-4333-8444-555555555555'
 	});
 	for (const claim of ['сохранена', 'сохранён', 'гарантируем', 'гарантирована']) {
 		assert.ok(!html.includes(claim), `html must not claim: ${claim}`);
 		assert.ok(!text.includes(claim), `text must not claim: ${claim}`);
 	}
-	assert.ok(html.includes('не хранит'), 'the notification states there is no stored copy');
+	assert.ok(html.includes('не хранит копию'), 'the notification states the server keeps no copy');
+	assert.ok(!html.includes('единственная копия'), 'no absolute claim about being the only copy');
 });
 
 test('intentLabel maps known codes and falls back safely', () => {

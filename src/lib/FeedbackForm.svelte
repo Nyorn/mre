@@ -96,6 +96,7 @@
         submissionResponse = objectName
           ? `${result.message || 'Заявка отправлена.'} Объект: «${objectName}».`
           : result.message || 'Заявка отправлена.';
+        // Only a confirmed send clears the fields.
         name = phone = message = '';
         // New enquiry from here on, so a fresh id and timer.
         leadId = newLeadId();
@@ -108,11 +109,31 @@
         }
         submissionResponse =
           result.message || 'Не удалось отправить заявку. Проверьте данные и попробуйте ещё раз.';
+
+        /*
+         * The visitor edited the form after a version had already been sent, so
+         * the server refused to reuse the idempotency key. Their edit was NOT
+         * sent. Mint a new lead id so pressing Отправить again sends the edited
+         * version as a genuinely new enquiry rather than replaying the old one.
+         */
+        if (result.new_lead_required) {
+          leadId = newLeadId();
+          formStartedAt = Date.now();
+          canRetry = true;
+        }
+
+        /*
+         * A stale page cannot be fixed by resubmitting the same timestamp, so
+         * refresh the timer here — the visitor keeps everything they typed.
+         */
+        if (result.code === 'stale_form' || result.code === 'missing_timing') {
+          formStartedAt = Date.now();
+        }
       }
     } catch (error) {
       submissionState = 'error';
       canRetry = true;
-      submissionResponse = 'Нет соединения с формой. Проверьте сеть и попробуйте ещё раз.';
+      submissionResponse = 'Не удалось отправить заявку: нет связи с сервером.';
     } finally {
       isSubmitting = false;
     }
@@ -170,7 +191,7 @@
       {submissionResponse}
       {#if canRetry}
         <br />
-        <span class="retry-note">Данные сохранены в форме — нажмите «Отправить» ещё раз.</span>
+        <span class="retry-note">Данные остаются в полях страницы — нажмите «Отправить» ещё раз.</span>
       {/if}
     </p>
   {/if}
