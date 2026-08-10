@@ -75,25 +75,33 @@ export const COPY_LABELS = {
  *   3. anything else → only under a genuine `vite dev`, and only with the
  *      server-only override set.
  *
- * Rule 3 is why `dev` is a required input rather than something inferred from
- * env. `dev` comes from $app/environment, which the bundler resolves to a
- * constant: true for `vite dev`, false in every built artifact. So the override
- * is dead code in any deployed context — branch deploys, `netlify dev`, a
- * self-hosted build, or a context name that does not exist yet. Previously it
- * was reachable in all of those, which is the hole this closes.
+ * `context` is a build-time constant (BUILD_CONTEXT), not a runtime env lookup.
+ * Netlify omits CONTEXT from the SSR function's process.env, so the previous
+ * dynamic-env version resolved against '' on a real deploy preview and rule 2
+ * never fired — the comparer simply never appeared. Verified live on PR #3.
  *
- * @param {Record<string, string | undefined>} env
- * @param {{ dev?: boolean }} runtime  `dev` from $app/environment
+ * Rule 3 is why `dev` is a separate input. It comes from $app/environment,
+ * which the bundler resolves to a constant: true for `vite dev`, false in every
+ * built artifact. So the override is dead code in any deployed context —
+ * branch deploys, `netlify dev`, a self-hosted build, or a context name that
+ * does not exist yet.
+ *
+ * `override` is read by the caller from `$env/dynamic/private`. Runtime env is
+ * fine there precisely because it is only ever consulted under `vite dev`,
+ * where process.env is fully populated.
+ *
+ * @param {string} context  deployment context, from BUILD_CONTEXT
+ * @param {{ dev?: boolean, override?: string }} runtime
  * @returns {boolean}
  */
-export function resolvePreviewGate(env = {}, { dev = false } = {}) {
-	if (isProductionContext(env)) return false;
-	if (isDeployPreviewContext(env)) return true;
+export function resolvePreviewGate(context, { dev = false, override = '' } = {}) {
+	if (isProductionContext(context)) return false;
+	if (isDeployPreviewContext(context)) return true;
 
 	// Never reachable from a build: `dev` is compiled to false in every artifact.
 	if (dev !== true) return false;
 
-	return String(env.SEA_ESTATE_PREVIEW_COMPARER || '').trim() === 'true';
+	return String(override ?? '').trim() === 'true';
 }
 
 /** @returns {string | null} the id when it is on the allowlist, else null. */

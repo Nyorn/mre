@@ -22,45 +22,45 @@ import {
  * ------------------------------------------------------------------------ */
 
 test('a Netlify deploy preview opens the gate', () => {
-	assert.equal(resolvePreviewGate({ CONTEXT: 'deploy-preview' }), true);
+	assert.equal(resolvePreviewGate('deploy-preview'), true);
 });
 
 test('the production context closes the gate', () => {
-	assert.equal(resolvePreviewGate({ CONTEXT: 'production' }), false);
+	assert.equal(resolvePreviewGate('production'), false);
 });
 
 test('production wins even when the local override is set', () => {
 	// The override exists for `vite dev`. If it is ever set on the production
 	// site by mistake, the deployment context must still veto it.
 	assert.equal(
-		resolvePreviewGate({ CONTEXT: 'production', SEA_ESTATE_PREVIEW_COMPARER: 'true' }),
+		resolvePreviewGate('production', { dev: true, override: 'true' }),
 		false
 	);
 });
 
 test('branch deploys and unknown contexts do not open the gate', () => {
-	assert.equal(resolvePreviewGate({ CONTEXT: 'branch-deploy' }), false);
-	assert.equal(resolvePreviewGate({ CONTEXT: 'dev' }), false);
-	assert.equal(resolvePreviewGate({ CONTEXT: '' }), false);
-	assert.equal(resolvePreviewGate({}), false);
-	assert.equal(resolvePreviewGate(), false);
+	assert.equal(resolvePreviewGate('branch-deploy'), false);
+	assert.equal(resolvePreviewGate('dev'), false);
+	assert.equal(resolvePreviewGate(''), false);
+	assert.equal(resolvePreviewGate(undefined), false);
+	assert.equal(resolvePreviewGate(null), false);
 });
 
 test('the local override needs the exact string true, and a real dev server', () => {
 	// The override is now confined to `vite dev`; see tests/deployment-gate.test.js
 	// for the full matrix proving it is unreachable from any deployed context.
-	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'true' }, { dev: true }), true);
-	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: '1' }, { dev: true }), false);
-	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'TRUE' }, { dev: true }), false);
-	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'yes' }, { dev: true }), false);
+	assert.equal(resolvePreviewGate('', { dev: true, override: 'true' }), true);
+	assert.equal(resolvePreviewGate('', { dev: true, override: '1' }), false);
+	assert.equal(resolvePreviewGate('', { dev: true, override: 'TRUE' }), false);
+	assert.equal(resolvePreviewGate('', { dev: true, override: 'yes' }), false);
 
 	// Same variable, no dev server: no.
-	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'true' }, { dev: false }), false);
+	assert.equal(resolvePreviewGate('', { dev: false, override: 'true' }), false);
 });
 
 test('the context comparison tolerates case and padding from the CI env', () => {
-	assert.equal(resolvePreviewGate({ CONTEXT: ' Deploy-Preview ' }), true);
-	assert.equal(resolvePreviewGate({ CONTEXT: ' PRODUCTION ' }), false);
+	assert.equal(resolvePreviewGate(' Deploy-Preview '), true);
+	assert.equal(resolvePreviewGate(' PRODUCTION '), false);
 });
 
 /* ---------------------------------------------------------------------------
