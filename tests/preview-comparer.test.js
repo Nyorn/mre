@@ -47,11 +47,16 @@ test('branch deploys and unknown contexts do not open the gate', () => {
 	assert.equal(resolvePreviewGate(), false);
 });
 
-test('the local override needs the exact string true', () => {
-	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'true' }), true);
-	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: '1' }), false);
-	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'TRUE' }), false);
-	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'yes' }), false);
+test('the local override needs the exact string true, and a real dev server', () => {
+	// The override is now confined to `vite dev`; see tests/deployment-gate.test.js
+	// for the full matrix proving it is unreachable from any deployed context.
+	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'true' }, { dev: true }), true);
+	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: '1' }, { dev: true }), false);
+	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'TRUE' }, { dev: true }), false);
+	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'yes' }, { dev: true }), false);
+
+	// Same variable, no dev server: no.
+	assert.equal(resolvePreviewGate({ SEA_ESTATE_PREVIEW_COMPARER: 'true' }, { dev: false }), false);
 });
 
 test('the context comparison tolerates case and padding from the CI env', () => {

@@ -27,6 +27,15 @@
   let preloader;
   setContext('loading', loading);
 
+  /*
+   * Server-decided, from the Netlify deployment context. Fails closed: only a
+   * real production deploy loads GTM/gtag, so deploy previews and local dev no
+   * longer report into the production property. Production behaviour is
+   * unchanged — same containers, same config call.
+   */
+  export let data;
+  $: analyticsEnabled = data?.analyticsEnabled === true;
+
   $: isHome = $page.route?.id === '/';
 
   onMount(() => {
@@ -43,11 +52,13 @@
       }, 1500);
     }
 
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
+    if (analyticsEnabled) {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
 
-    gtag('config', 'G-2EQQHPBC9X');
+      gtag('config', 'G-2EQQHPBC9X');
+    }
   });
 
 </script>
@@ -57,6 +68,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&display=swap" rel="stylesheet">
 
+  {#if analyticsEnabled}
   <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
       new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
@@ -64,8 +76,7 @@
   })(window,document,'script','dataLayer','GTM-57S8XWJV');</script>
 
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-2EQQHPBC9X"></script>
-
-
+  {/if}
 
 </svelte:head>
 <!-- Google Tag Manager (noscript) -->
@@ -74,8 +85,10 @@
 {#if $loading && !isHome}
 <Preloader bind:this={preloader} />
 {/if}
+{#if analyticsEnabled}
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-57S8XWJV"
-                  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+                  height="0" width="0" style="display:none;visibility:hidden" title="Google Tag Manager"></iframe></noscript>
+{/if}
 
 {#if isHome}
   <!-- Home renders its own header/main/footer; see src/routes/+page.svelte. -->

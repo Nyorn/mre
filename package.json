@@ -10,7 +10,7 @@
     "format": "prettier --write --plugin-search-dir=. .",
     "setup": "node ./contentful/setup.js",
     "postbuild": "node ./src/scripts/generate-sitemap.js",
-    "test": "node --test tests/lead.test.js tests/delivery.test.js tests/rate-limit.test.js tests/retry-flow.test.js tests/preview-comparer.test.js tests/home-legacy-free.test.js tests/no-tracked-secrets.test.js"
+    "test": "node --test tests/lead.test.js tests/delivery.test.js tests/rate-limit.test.js tests/retry-flow.test.js tests/preview-comparer.test.js tests/home-legacy-free.test.js tests/no-tracked-secrets.test.js tests/deployment-gate.test.js"
   },
   "engines": {
     "node": ">=18"

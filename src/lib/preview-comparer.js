@@ -18,6 +18,10 @@
  * the side effects.
  */
 
+// Relative, not $lib: this module is imported directly by node:test, which does
+// not resolve Vite aliases.
+import { isProductionContext, isDeployPreviewContext } from './deployment-gate.js';
+
 /** Bumped only when the stored shape changes; an unknown version is discarded. */
 export const PREVIEW_STORAGE_KEY = 'seaEstate.preview.v1';
 
@@ -48,23 +52,31 @@ export const COPY_LABELS = {
 /**
  * Is the comparer allowed to render?
  *
- * `CONTEXT` is set by Netlify per deploy context and is fixed for the life of a
- * deploy. "production" is a hard veto evaluated first, so even a misconfigured
- * override env var cannot switch the comparer on for the live site.
+ * Three ordered rules, and the order is the security property:
  *
- * SEA_ESTATE_PREVIEW_COMPARER exists because `vite dev` has no CONTEXT at all,
- * and local QA would otherwise be impossible. It is a server-only variable: it
- * is never bundled into client code and must never be set on the production
- * Netlify context.
+ *   1. production  → never. Hard veto, evaluated first, so a misconfigured
+ *      override variable cannot switch the switcher on for the live site.
+ *   2. deploy-preview → yes. This is the intended surface.
+ *   3. anything else → only under a genuine `vite dev`, and only with the
+ *      server-only override set.
+ *
+ * Rule 3 is why `dev` is a required input rather than something inferred from
+ * env. `dev` comes from $app/environment, which the bundler resolves to a
+ * constant: true for `vite dev`, false in every built artifact. So the override
+ * is dead code in any deployed context — branch deploys, `netlify dev`, a
+ * self-hosted build, or a context name that does not exist yet. Previously it
+ * was reachable in all of those, which is the hole this closes.
  *
  * @param {Record<string, string | undefined>} env
+ * @param {{ dev?: boolean }} runtime  `dev` from $app/environment
  * @returns {boolean}
  */
-export function resolvePreviewGate(env = {}) {
-	const context = String(env.CONTEXT || '').trim().toLowerCase();
+export function resolvePreviewGate(env = {}, { dev = false } = {}) {
+	if (isProductionContext(env)) return false;
+	if (isDeployPreviewContext(env)) return true;
 
-	if (context === 'production') return false;
-	if (context === 'deploy-preview') return true;
+	// Never reachable from a build: `dev` is compiled to false in every artifact.
+	if (dev !== true) return false;
 
 	return String(env.SEA_ESTATE_PREVIEW_COMPARER || '').trim() === 'true';
 }
