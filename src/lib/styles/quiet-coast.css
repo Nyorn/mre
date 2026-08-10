@@ -20,6 +20,13 @@
 	--qc-surface: #fffdf8;
 	--qc-surface-subtle: #f3f6f5;
 	--qc-border: #d7e1df;
+	/*
+	 * `--qc-border` is 1.31:1 against the surface. That is fine for a decorative
+	 * rule but fails WCAG 1.4.11 as the boundary of an interactive control, so
+	 * the secondary CTA uses this stronger token instead: 3.28:1 on --qc-surface
+	 * and 3.07:1 on --qc-surface-subtle.
+	 */
+	--qc-border-strong: #789197;
 	--qc-sea-700: #006b67;
 	--qc-sea-800: #005653;
 	--qc-sea-soft: #dcefeb;
@@ -167,6 +174,17 @@
 	padding: var(--qc-space-5);
 }
 
+/*
+ * brand-delta.v1 §3 restricts Muted to light surfaces, and the numbers agree:
+ * --qc-muted on --qc-surface is 4.64:1 but only 4.34:1 on --qc-surface-subtle,
+ * i.e. below AA. Captions inside a panel therefore step up to Ink 700 (8.17:1)
+ * rather than the palette drifting to a lighter panel or a darker muted.
+ */
+.qc-panel .qc-caption,
+.qc-panel .qc-label {
+	color: var(--qc-ink-700);
+}
+
 /* Borders instead of shadows — brand-delta §3 "Характер" */
 .qc-card {
 	background: var(--qc-surface);
@@ -212,7 +230,7 @@
 .qc-cta-secondary {
 	background: transparent;
 	color: var(--qc-sea-700);
-	border-color: var(--qc-border);
+	border-color: var(--qc-border-strong);
 }
 
 .qc-cta-secondary:hover {

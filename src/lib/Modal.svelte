@@ -20,7 +20,24 @@
     {#each $modalStack as modalItem}
       <div class="modal-window">
         {#if modalItem.type === 'feedback'}
-          <FeedbackForm objectName={modalItem.data.objectName || ''} url={modalItem.data.url || ''} />
+          <!--
+            Forwards the whole enquiry context, not just objectName/url.
+
+            openEnquiry() has been building intent/scenario/object_id/object_slug
+            since Slice A and /api/lead validates and renders every one of them
+            (server/lead.js LIMITS + notification rows), but this component only
+            passed two of them — so every scenario enquiry arrived at the office
+            with no scenario and no intent. Delivery mechanics are unchanged:
+            same endpoint, same lead_id, same idempotency and timing rules.
+          -->
+          <FeedbackForm
+            objectName={modalItem.data.objectName || ''}
+            objectId={modalItem.data.objectId || ''}
+            objectSlug={modalItem.data.objectSlug || ''}
+            intent={modalItem.data.intent || 'general_question'}
+            scenario={modalItem.data.scenario || ''}
+            url={modalItem.data.url || ''}
+          />
         {:else if modalItem.type === 'objectCard'}
           <ObjectCardModal object={modalItem.data} />
 
