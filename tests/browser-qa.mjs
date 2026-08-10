@@ -391,6 +391,103 @@ async function checkDialog(ws, label) {
 	record(after.focusOnOpener, label, 'focus did not return to the opener after close');
 }
 
+async function checkLeadForm(ws, label) {
+	/* Opens the lead dialog and inspects the form surface and error semantics. */
+	const opened = await evaluate(
+		ws,
+		`(() => {
+      const cta = [...document.querySelectorAll('button.qc-cta')].find((b) => /Подобрать/.test(b.textContent));
+      if (!cta) return false;
+      cta.focus(); cta.click();
+      return true;
+    })()`
+	);
+	if (!opened) {
+		record(false, label, 'form: hero CTA not found');
+		return;
+	}
+	await new Promise((r) => setTimeout(r, 350));
+
+	const initial = await evaluate(
+		ws,
+		`${HELPERS}
+    (() => {
+      const form = document.querySelector('.feedback-form');
+      if (!form) return null;
+      const visibleErrors = [...form.querySelectorAll('.error-message')]
+        .filter((el) => getComputedStyle(el).visibility !== 'hidden' && el.textContent.trim())
+        .map((el) => el.textContent.trim());
+      const name = form.querySelector('#name');
+      const submit = form.querySelector('.submit-button');
+      const cs = (el) => window.__qa.contrast(el);
+      return {
+        visibleErrors,
+        nameInvalid: name ? name.getAttribute('aria-invalid') : null,
+        nameDescribed: name ? name.getAttribute('aria-describedby') : null,
+        nameH: name ? Math.round(name.getBoundingClientRect().height) : 0,
+        formBg: getComputedStyle(form).backgroundColor,
+        submit: submit ? { c: cs(submit), h: Math.round(submit.getBoundingClientRect().height) } : null,
+        label: cs(form.querySelector('label[for="name"]')),
+        input: cs(name)
+      };
+    })()`
+	);
+
+	if (!initial) {
+		record(false, label, 'form: .feedback-form not found in the dialog');
+		return;
+	}
+
+	record(initial.visibleErrors.length === 0, label,
+		`form shows errors before any interaction: ${JSON.stringify(initial.visibleErrors)}`);
+	record(initial.nameInvalid === 'false', label,
+		`untouched field reports aria-invalid=${initial.nameInvalid}`);
+	record(!initial.nameDescribed, label,
+		`untouched field points at an error via aria-describedby=${initial.nameDescribed}`);
+	record(initial.nameH >= 44, label, `input is ${initial.nameH}px tall, below the 44px target`);
+	record(!/rgba\(0, 0, 0, 0\)/.test(initial.formBg), label, 'form has no painted surface');
+	record(initial.label && initial.label.ratio >= AA_NORMAL, label,
+		`form label contrast ${initial.label?.ratio?.toFixed(2)} < ${AA_NORMAL}`);
+	record(initial.input && initial.input.ratio >= AA_NORMAL, label,
+		`form input text contrast ${initial.input?.ratio?.toFixed(2)} < ${AA_NORMAL}`);
+	record(initial.submit && initial.submit.c.ratio >= AA_NORMAL, label,
+		`submit contrast ${initial.submit?.c?.ratio?.toFixed(2)} < ${AA_NORMAL} (bg ${initial.submit?.c?.bg})`);
+	record(initial.submit && initial.submit.h >= 44, label,
+		`submit is ${initial.submit?.h}px tall, below the 44px target`);
+
+	/* Blur an empty required field: the error must now appear and be wired up. */
+	const afterTouch = await evaluate(
+		ws,
+		`${HELPERS}
+    (() => {
+      const name = document.querySelector('#name');
+      name.focus(); name.blur();
+      return new Promise((resolve) => setTimeout(() => {
+        const err = document.querySelector('#name-error');
+        const visible = err && getComputedStyle(err).visibility !== 'hidden' && err.textContent.trim();
+        resolve({
+          visible: !!visible,
+          text: err ? err.textContent.trim() : '',
+          invalid: name.getAttribute('aria-invalid'),
+          described: name.getAttribute('aria-describedby'),
+          errContrast: err ? window.__qa.contrast(err) : null
+        });
+      }, 120));
+    })()`
+	);
+
+	record(afterTouch.visible, label, 'no error appeared after leaving an empty required field');
+	record(afterTouch.invalid === 'true', label, `aria-invalid is ${afterTouch.invalid} after touch`);
+	record(afterTouch.described === 'name-error', label,
+		`aria-describedby is ${afterTouch.described} after touch`);
+	record(afterTouch.errContrast && afterTouch.errContrast.ratio >= AA_NORMAL, label,
+		`error text contrast ${afterTouch.errContrast?.ratio?.toFixed(2)} < ${AA_NORMAL}`);
+
+	await rpc(ws, 'Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+	await rpc(ws, 'Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+	await new Promise((r) => setTimeout(r, 250));
+}
+
 async function checkComparerInert(ws, label) {
 	const data = await evaluate(
 		ws,
@@ -496,6 +593,13 @@ async function main() {
 
 		await rpc(ws, 'Page.enable');
 		await rpc(ws, 'Runtime.enable');
+		/*
+		 * Without this, a headless page is never "focused", so Chrome dispatches
+		 * no focus/blur events at all: el.focus() moves activeElement but a blur
+		 * listener never fires. Any check of touched-state validation or of focus
+		 * return would then be testing the harness, not the page.
+		 */
+		await rpc(ws, 'Emulation.setFocusEmulationEnabled', { enabled: true });
 
 		console.log(`Base: ${BASE}`);
 		console.log(`Chrome: ${chrome}\n`);
@@ -532,6 +636,8 @@ async function main() {
 			await setViewport(ws, width);
 			await navigate(ws, `${BASE}/`);
 			await checkDialog(ws, label);
+			await navigate(ws, `${BASE}/`);
+			await checkLeadForm(ws, `form@${width}`);
 			await navigate(ws, `${BASE}/`);
 			await checkComparerInert(ws, `comparer-${label}`);
 		}
