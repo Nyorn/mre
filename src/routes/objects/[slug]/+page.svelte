@@ -67,12 +67,22 @@
 <svelte:head>
 	<title>{title}</title>
 	<meta name="description" content={description} />
+
+	<!--
+	  Degraded catalog only. HTTP stays 200 because the visitor gets a usable
+	  page, but a 200 that lists nothing is exactly what a crawler would happily
+	  index in place of the real catalog. noindex is scoped to this branch: a
+	  healthy catalog, a healthy detail page and a genuine 404 are untouched, so
+	  no real URL loses its indexability because the CMS blinked.
+	-->
+	{#if data.cmsError}
+		<meta name="robots" content="noindex" />
+	{/if}
 </svelte:head>
 
 {#if data.cmsError}
 	<CmsUnavailable failure={data.cmsError} level={1} />
 {:else}
-
 
 {#if object}
 	<div class="qc-container detail-page">

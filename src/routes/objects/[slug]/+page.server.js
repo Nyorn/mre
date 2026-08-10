@@ -2,9 +2,7 @@ import { error } from '@sveltejs/kit'
 import { documentToHtmlString } from '@contentful/rich-text-html-renderer'
 import { contentfulFetch, resolveCmsFailure } from '$lib/contentful-fetch';
 
-
 export async function load({ params }) {
-  console.log("Slug in slug.server.js:", params.slug);
   const query = `
   {
        objectCollection(where: {slug: "${params.slug}"}) {

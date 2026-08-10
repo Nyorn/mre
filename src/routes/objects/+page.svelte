@@ -14,7 +14,6 @@
   let showModal = false;
   // An outage yields an empty list plus data.cmsError; both paths must be safe.
   let filteredData = data.objects || [];
-  console.log("Данные объектов:", data.objects);
   let sortOptions = {}; // Добавьте этот объект для хранения опций сортировки
   let lastFilterOptions = {};
   let loadedImagesCount = 0;
@@ -30,8 +29,6 @@
   function handleFilter(event, sortOptions = {}) {
     lastFilterOptions = event ? event.detail : lastFilterOptions;
     const { city, price, type, bedrooms, elevator, area, bathrooms, pool, parking, fromBuilder, minPrice, maxPrice, minArea, maxArea, minFloor, maxFloorValue, heat, security, conserj, video, fitness, restoraunts, playground, tv, internet } = event.detail;
-
-    console.log("Received filter event with details:", event.detail);
 
     filteredData = data.objects.filter(object => {
       let priceNum = price ? parseInt(price, 10) : null;
@@ -64,30 +61,6 @@
       let matchesTv = tv === undefined || object.tv === tv;
       let matchesInternet = internet === undefined || object.internet === internet;
 
-      console.log(`Object ${object.name} filter match results:`, {
-        matchesCity,
-        matchesType,
-        matchesPrice,
-        matchesBedrooms,
-        matchesElevator,
-        matchesArea,
-        matchesBathrooms,
-        matchesPool,
-        matchesParking,
-        matchesFromBuilder,
-        matchesFloor,
-        matchesHeating,
-        matchesSecurity,
-        matchesConserj,
-        matchesVideo,
-        matchesFitness,
-        matchesRestoraunts,
-        matchesPlayground,
-        matchesTv,
-        matchesInternet
-      });
-      console.log(`Price filter value: ${priceNum}, Area filter value: ${areaNum}`);
-      console.log(`Matches price: ${matchesPrice}, Matches area: ${matchesArea}`);
       return matchesCity &&
         matchesType &&
         matchesPrice &&
@@ -119,9 +92,7 @@
 
     applySorting(sortOptions);
 
-    console.log("Filtered and sorted data:", filteredData);
   }
-
 
   function applySorting(sortOptions) {
     filteredData.sort((a, b) => {
@@ -150,13 +121,11 @@
   }
 
   function openFullFilters() {
-    console.log("Received full filter event with details:", event.detail);
     showModal = false; // Принудительно сбрасываем состояние
     setTimeout(() => showModal = true, 0); // Обновляем состояние асинхронно
   }
 
   function handleFullFilter(event) {
-    console.log("Данные из FullFilterModal:", event.detail);
     handleFilter(event); // Повторное использование функции handleFilter для полной фильтрации
   }
 
@@ -169,7 +138,6 @@
     const newSortOptions = event.detail;
     handleFilter({ detail: lastFilterOptions }, newSortOptions);
   }
-
 
   function onDataLoaded() {
     loading = false; // Прячем прелоадер
@@ -195,18 +163,25 @@
 
 <svelte:head>
 
-
   <title>Купить Квартиру в Обзоре, Бяле, Равде, Солнечном берегу, Золотых песках, Святом Власе | Sea Real Estate</title>
 
   <meta name="description" content="Ищете квартиру в Обзоре, Бяле или Равде? Золотых песках, на Солнечном берегу или Святом Власе? Обширный выбор недвижимости от Sea Real Estate. Охраняемые комплексы, бассейны, фитнес и многое другое" />
 
-
+	<!--
+	  Degraded catalog only. HTTP stays 200 because the visitor gets a usable
+	  page, but a 200 that lists nothing is exactly what a crawler would happily
+	  index in place of the real catalog. noindex is scoped to this branch: a
+	  healthy catalog, a healthy detail page and a genuine 404 are untouched, so
+	  no real URL loses its indexability because the CMS blinked.
+	-->
+	{#if data.cmsError}
+		<meta name="robots" content="noindex" />
+	{/if}
 </svelte:head>
 
 {#if data.cmsError}
   <CmsUnavailable failure={data.cmsError} level={1} />
 {:else}
-
 
 <FilterBar on:filter={handleFilter} on:sort={handleSort} on:open-full-filters={openFullFilters} />
 <SortModal {showSortModal} {applySort} />

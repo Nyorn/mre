@@ -30,7 +30,14 @@
   let wasOpen = false;
 
   $: isOpen = $modalStack.length > 0;
+  /*
+   * `data` is optional at the call site: the floating call-back button opens
+   * with modalStack.open('feedback', {}) and nothing stops a caller omitting it
+   * entirely. Normalising once here means no reader has to check whether each
+   * of the six props below can explode.
+   */
   $: top = isOpen ? $modalStack[$modalStack.length - 1] : null;
+  $: topData = (top && top.data) || {};
 
   /* Accessible name per modal type. A dialog without a name is an unlabelled
      region; screen readers announce "dialog" and nothing else. */
@@ -49,10 +56,10 @@
    */
   $: dialogContext =
     top && top.type === 'feedback'
-      ? top.data.objectName
-        ? `Объект: ${top.data.objectName}`
-        : top.data.scenario
-          ? `Задача: ${top.data.scenario}`
+      ? topData.objectName
+        ? `Объект: ${topData.objectName}`
+        : topData.scenario
+          ? `Задача: ${topData.scenario}`
           : ''
       : '';
 
@@ -218,21 +225,21 @@
             office with no intent and no scenario.
           -->
           <FeedbackForm
-            objectName={top.data.objectName || ''}
-            objectId={top.data.objectId || ''}
-            objectSlug={top.data.objectSlug || ''}
-            intent={top.data.intent || 'general_question'}
-            scenario={top.data.scenario || ''}
-            url={top.data.url || ''}
+            objectName={topData.objectName || ''}
+            objectId={topData.objectId || ''}
+            objectSlug={topData.objectSlug || ''}
+            intent={topData.intent || 'general_question'}
+            scenario={topData.scenario || ''}
+            url={topData.url || ''}
           />
         {:else if top.type === 'objectCard'}
-          <ObjectCardModal object={top.data} />
+          <ObjectCardModal object={topData} />
         {:else if top.type === 'imageView'}
-          {#if top.data && top.data.images && typeof top.data.currentIndex === 'number'}
+          {#if topData.images && typeof topData.currentIndex === 'number'}
             <ImageViewer
-              imageUrl={top.data.imageUrl}
-              images={top.data.images}
-              currentIndex={top.data.currentIndex}
+              imageUrl={topData.imageUrl}
+              images={topData.images}
+              currentIndex={topData.currentIndex}
             />
           {:else}
             <p>Не удалось открыть изображение.</p>

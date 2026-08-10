@@ -6,6 +6,12 @@
  *   CMS answers, slug has no match -> 404, genuinely not found
  *   CMS answers with an object     -> 200, the object
  *
+ * And the indexing contract that rides on top of the first one: the degraded
+ * page keeps HTTP 200 because the visitor gets a usable page, so `noindex` is
+ * what stops a crawler indexing an empty catalog in place of the real one. It
+ * must appear ONLY there — a healthy catalog, a healthy detail page and a
+ * genuine 404 must stay indexable, or a CMS blip costs real URLs.
+ *
  * They used to collapse into a single HTTP 500, which dropped the visitor into
  * the framework error shell with no header, no retry and no way to reach us —
  * and told search engines a real object URL was broken.
@@ -71,6 +77,8 @@ async function get(pathname) {
 	return { status: response.status, html: await response.text() };
 }
 
+const NOINDEX = 'name="robots" content="noindex"';
+
 const OBJECT = {
 	name: 'Тестовый объект',
 	slug: 'stub-object',
@@ -90,12 +98,14 @@ check(
 	!r.html.includes('Каталог временно недоступен'),
 	'missing slug does NOT claim the catalog is down'
 );
+check(!r.html.includes(NOINDEX), 'genuine 404 is NOT marked noindex');
 
 /* --- 2. CMS answers with the object -> 200 ----------------------------- */
 nextReply = { status: 200, body: { data: { objectCollection: { items: [OBJECT] } } } };
 r = await get('/objects/stub-object');
 check(r.status === 200, `existing slug returns 200 (got ${r.status})`);
 check(r.html.includes('Тестовый объект'), 'existing slug renders the object');
+check(!r.html.includes(NOINDEX), 'healthy detail page is NOT marked noindex');
 
 /* --- 3. CMS unauthorised -> degraded, not 500 or 404 ------------------- */
 nextReply = { status: 401, statusText: 'Unauthorized', body: { errors: [{ message: 'nope' }] } };
@@ -105,6 +115,7 @@ check(r.html.includes('Каталог временно недоступен'), '
 check(r.html.includes('Повторить'), 'detail offers a retry');
 check(r.html.includes('Оставить заявку'), 'detail routes to the enquiry form');
 check(!r.html.includes('Внутренняя ошибка сервера'), 'no framework 500 page');
+check(r.html.includes(NOINDEX), 'degraded detail page IS marked noindex');
 
 /* --- 4. list route, same outage --------------------------------------- */
 nextReply = { status: 401, statusText: 'Unauthorized', body: { errors: [{ message: 'nope' }] } };
@@ -112,6 +123,7 @@ r = await get('/objects');
 check(r.status === 200, `list returns 200 during an outage (got ${r.status})`);
 check(r.html.includes('Каталог временно недоступен'), 'list shows the degraded state');
 check(r.html.includes('Повторить'), 'list offers a retry');
+check(r.html.includes(NOINDEX), 'degraded list IS marked noindex');
 
 /* --- 5. list route, healthy CMS --------------------------------------- */
 nextReply = { status: 200, body: { data: { objectCollection: { items: [OBJECT] } } } };
@@ -121,6 +133,7 @@ check(
 	!r.html.includes('Каталог временно недоступен'),
 	'healthy list does not show the degraded state'
 );
+check(!r.html.includes(NOINDEX), 'healthy list is NOT marked noindex');
 
 /* --- 6. nothing leaks -------------------------------------------------- */
 nextReply = { status: 401, statusText: 'Unauthorized', body: { errors: [{ message: 'nope' }] } };

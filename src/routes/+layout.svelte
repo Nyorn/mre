@@ -43,7 +43,6 @@
    * object detail, /404 — keeps Nav/main/Footer untouched.
    */
   const OWN_SHELL_ROUTES = ['/', '/contacts', '/about'];
-  $: isHome = $page.route?.id === '/';
   $: ownsShell = OWN_SHELL_ROUTES.includes($page.route?.id);
 
   onMount(() => {

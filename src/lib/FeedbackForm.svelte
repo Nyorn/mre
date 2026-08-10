@@ -69,10 +69,17 @@
   const markTouched = (field) => { touched = { ...touched, [field]: true }; };
 
   /*
-   * Plain reactive values, not a reactive helper function. `$: fn = (f) => ...`
-   * re-creates the function but the template only re-reads it through a call,
-   * which made the displayed error lag a state change. Three explicit
-   * declarations are unambiguous and cheaper to read.
+   * Three plain reactive values rather than one reactive helper function.
+   *
+   * Correcting my own earlier note here: I first wrote that `$: fn = (f) => ...`
+   * failed to update the template. That was wrong. The reactive-function form
+   * worked; what actually failed was the test harness — headless Chrome does not
+   * dispatch focus/blur events unless the page is focus-emulated, so the blur
+   * that sets `touched` never fired and the error never appeared. That is fixed
+   * in the harness (Emulation.setFocusEmulationEnabled).
+   *
+   * These declarations stay because they are simpler to read than a function
+   * invoked from the template, not because the other form was broken.
    */
   $: nameError = submitAttempted || touched.name ? formErrors.name || '' : '';
   $: phoneError = submitAttempted || touched.phone ? formErrors.phone || '' : '';
