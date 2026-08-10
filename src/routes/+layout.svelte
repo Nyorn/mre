@@ -42,7 +42,7 @@
    * exactly one <main>. Everything still on the legacy chrome — /objects,
    * object detail, /404 — keeps Nav/main/Footer untouched.
    */
-  const OWN_SHELL_ROUTES = ['/', '/contacts', '/about'];
+  const OWN_SHELL_ROUTES = ['/', '/contacts', '/about', '/objects'];
   $: ownsShell = OWN_SHELL_ROUTES.includes($page.route?.id);
 
   onMount(() => {

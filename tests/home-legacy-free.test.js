@@ -172,13 +172,13 @@ test('no route renders the artificial timer preloader any more', () => {
 	assert.ok(existsSync(path.join(libDir, 'InfoBlock.svelte')), 'shared InfoBlock was deleted');
 });
 
-test('contacts and about render their own Quiet Coast shell', () => {
+test('contacts, about and the catalog render their own Quiet Coast shell', () => {
 	const layout = stripComments(
 		readFileSync(path.join(srcDir, 'routes', '+layout.svelte'), 'utf8')
 	);
-	assert.match(layout, /OWN_SHELL_ROUTES = \['\/', '\/contacts', '\/about'\]/);
+	assert.match(layout, /OWN_SHELL_ROUTES = \['\/', '\/contacts', '\/about', '\/objects'\]/);
 
-	for (const route of ['contacts', 'about']) {
+	for (const route of ['contacts', 'about', 'objects']) {
 		const source = readFileSync(path.join(srcDir, 'routes', route, '+page.svelte'), 'utf8');
 		assert.match(source, /QuietCoastHeader/, `${route} has no Quiet Coast header`);
 		assert.match(source, /QuietCoastFooter/, `${route} has no Quiet Coast footer`);

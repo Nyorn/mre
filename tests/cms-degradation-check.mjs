@@ -135,6 +135,31 @@ check(
 );
 check(!r.html.includes(NOINDEX), 'healthy list is NOT marked noindex');
 
+/* --- 5b. the healthy catalog tells the truth about the object ---------- */
+check(r.html.includes('Тестовый объект'), 'healthy list renders the object name');
+check(r.html.includes('Смотреть объект'), 'each card offers one detail link');
+check(r.html.includes('Цена и наличие уточняются'), 'the availability caveat is visible');
+// OBJECT has no price and no area/bedrooms/floor, so nothing may be invented.
+check(r.html.includes('Цена по запросу'), 'a missing price renders as "Цена по запросу"');
+check(!/0\s*€/.test(r.html), 'no 0 € anywhere');
+check(!/undefined|NaN/.test(r.html), 'no undefined/NaN leaked into the markup');
+check(!/Площадь:\s*<\/dt>|Спальни:\s*<\/dt>/.test(r.html), 'no empty fact labels');
+check(r.html.includes('qc-skip-link'), 'catalog renders the Quiet Coast skip link');
+check(!r.html.includes('© 2024 Sea Real Estate'), 'legacy footer is gone from the catalog');
+check(!/href="#"/.test(r.html), 'no # placeholder links on the catalog');
+
+/* --- 5c. healthy CMS, zero published objects -> its own honest state ---- */
+nextReply = { status: 200, body: { data: { objectCollection: { items: [] } } } };
+r = await get('/objects');
+check(r.status === 200, `empty catalog returns 200 (got ${r.status})`);
+check(r.html.includes('Пока нет опубликованных'), 'empty catalog states it is empty');
+check(
+	!r.html.includes('Каталог временно недоступен'),
+	'an empty catalog is NOT reported as a CMS outage'
+);
+check(!r.html.includes(NOINDEX), 'an empty but healthy catalog stays indexable');
+check(r.html.includes('Оставить заявку'), 'empty catalog offers the enquiry route');
+
 /* --- 6. nothing leaks -------------------------------------------------- */
 nextReply = { status: 401, statusText: 'Unauthorized', body: { errors: [{ message: 'nope' }] } };
 r = await get('/objects');
