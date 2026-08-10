@@ -5,26 +5,24 @@
 	 * This route previously loaded three scripts before it could show anything:
 	 * Three.js from unpkg, a Splide shader carousel from /static, and a five-image
 	 * preload gated behind a hard 1500ms setTimeout that also locked body scroll.
-	 * All of it is gone from this page. What replaces it is a static hero, the
-	 * scenario entry, process/evidence, enquiry and a footer — the IA in
-	 * product-flow-delta.v1 §4, in that order.
+	 * All of it is gone. What replaces it is a static hero, the scenario entry,
+	 * process/evidence, enquiry and a footer — the IA in product-flow-delta.v1 §4.
 	 *
-	 * Shared modules the carousel used (Carousel.svelte, Preloader.svelte,
-	 * InfoBlock.svelte) are NOT deleted: other routes and the layout still
-	 * reference them. Home simply stops importing them, which tests/home-legacy-
-	 * free.test.js pins down statically.
+	 * Shared modules the carousel used (Carousel, Preloader, InfoBlock) are NOT
+	 * deleted: other routes and the layout still reference them. Home simply stops
+	 * importing them, which tests/home-legacy-free.test.js pins down statically.
 	 *
-	 * Landmarks: this page owns its own header/main/footer. +layout.svelte hands
-	 * the home route the bare slot precisely so the skip link can be the first
-	 * focusable element and there is exactly one <main>.
-	 *
-	 * BUNDLE: the comparer is imported dynamically and only after mount, so a
-	 * production build never fetches its chunk. SSR and the first client render
-	 * both emit an empty reserved slot, which is why this does not produce a
-	 * hydration mismatch — the two renders agree, and the bar fills a slot whose
-	 * height was already reserved, so nothing moves. The hero copy comes from the
-	 * server payload rather than a client import, keeping the other two copy
-	 * bundles out of the browser entirely.
+	 * LAYOUT CONTRACT for the comparer:
+	 *   - Initial render has zero unexpected shift. The variant comes from the
+	 *     query, resolved on the server, and nothing is restored from storage
+	 *     afterwards, so the first paint is already final.
+	 *   - The comparer BAR is server-rendered here, not inside the dynamically
+	 *     imported dialog. Its height at first paint is its final height at every
+	 *     breakpoint because it is the same DOM — no reserved slot to get wrong.
+	 *   - Changing COPY must not move anything: the hero reserves a measured slot.
+	 *   - Changing THEME may reflow lower sections, because the approved B and C
+	 *     directions genuinely differ in density and spacing. Allowed only as the
+	 *     direct result of that input.
 	 */
 	import { onMount } from 'svelte';
 	import ScenarioEntry from '$lib/ScenarioEntry.svelte';
@@ -33,9 +31,12 @@
 	import ProcessEvidence from '$lib/home/ProcessEvidence.svelte';
 	import EnquirySection from '$lib/home/EnquirySection.svelte';
 	import QuietCoastFooter from '$lib/home/QuietCoastFooter.svelte';
+	import PreviewBar from '$lib/home/PreviewBar.svelte';
 	import { openEnquiry, INTENT } from '$lib/enquiry.js';
+	import { previewTheme } from '$lib/store.js';
 	import { DEFAULT_THEME, DEFAULT_COPY } from '$lib/preview-comparer.js';
 	import '$lib/styles/home-themes.css';
+	import '$lib/styles/preview-comparer.css';
 
 	export let data;
 
@@ -52,17 +53,28 @@
 	$: theme = previewEnabled ? serverVariant.theme : DEFAULT_THEME;
 	$: copy = previewEnabled ? serverVariant.copy : DEFAULT_COPY;
 
+	/* Publish for the modal host, which lives outside .qc-home. */
+	$: previewTheme.set(previewEnabled ? theme : '');
+
 	/* Server sends the resolved bundle; the table only exists in a preview. */
 	$: heroCopy =
-		(previewEnabled && data?.heroCopyTable?.[copy]) || data?.heroCopy || { eyebrow: '', h1: '', lead: '' };
+		(previewEnabled && data?.heroCopyTable?.[copy]) ||
+		data?.heroCopy || { eyebrow: '', h1: '', lead: '' };
 
-	let PreviewComparerComponent = null;
+	let ComparerDialog = null;
+	let comparerOpen = false;
+	let comparerOpener = null;
 
 	onMount(async () => {
 		if (!previewEnabled) return;
-		const module = await import('$lib/PreviewComparer.svelte');
-		PreviewComparerComponent = module.default;
+		const module = await import('$lib/PreviewComparerDialog.svelte');
+		ComparerDialog = module.default;
 	});
+
+	function openComparer(triggerEl) {
+		comparerOpener = triggerEl;
+		comparerOpen = true;
+	}
 
 	function onVariantChange(event) {
 		theme = event.detail.theme;
@@ -93,19 +105,7 @@
 
 <div class="qc-home" data-preview-theme={previewEnabled ? theme : null}>
 	{#if previewEnabled}
-		<!-- Height reserved so the late-mounted bar cannot shift the page. -->
-		<div class="comparer-slot">
-			{#if PreviewComparerComponent}
-				<svelte:component
-					this={PreviewComparerComponent}
-					theme={serverVariant.theme}
-					copy={serverVariant.copy}
-					themeSource={serverVariant.themeSource}
-					copySource={serverVariant.copySource}
-					on:change={onVariantChange}
-				/>
-			{/if}
-		</div>
+		<PreviewBar {theme} {copy} open={comparerOpen} onOpen={openComparer} />
 	{/if}
 
 	<QuietCoastHeader />
@@ -126,18 +126,27 @@
 	<QuietCoastFooter />
 </div>
 
+{#if previewEnabled && ComparerDialog}
+	<svelte:component
+		this={ComparerDialog}
+		{theme}
+		{copy}
+		bind:open={comparerOpen}
+		opener={comparerOpener}
+		on:change={onVariantChange}
+	/>
+{/if}
+
 <style>
 	/*
 	 * The shell is opaque and full-height on purpose. global.css paints two
-	 * radial gradients on <body> (secondary + error hues) with
-	 * background-attachment: fixed. Rather than editing a global that every
-	 * other route still depends on, home covers it with its own surface.
+	 * radial gradients on <body> with background-attachment: fixed. Rather than
+	 * editing a global that every other route depends on, home covers it.
 	 *
 	 * No overflow-x: hidden here. That was masking real horizontal overflow
-	 * instead of fixing it — the page still scrolled sideways on some elements,
-	 * the mask just hid the scrollbar. Overflow is now prevented at the source
-	 * (min-width: 0 on flex/grid children, wrapping long words), and the QA
-	 * script asserts scrollWidth === clientWidth at 320px.
+	 * instead of fixing it. Overflow is prevented at the source (min-width: 0 on
+	 * flex/grid children, no forced word breaks), and the QA script asserts
+	 * scrollWidth === clientWidth at 320px.
 	 */
 	.qc-home {
 		position: relative;
@@ -147,27 +156,13 @@
 		color: var(--qc-ink-700);
 	}
 
-	/*
-	 * Matches the rendered height of the comparer bar at each breakpoint, so the
-	 * dynamically imported component drops into space that already exists.
-	 */
-	.comparer-slot {
-		min-height: 96px;
-	}
-
-	@media (min-width: 768px) {
-		.comparer-slot {
-			min-height: 60px;
-		}
-	}
-
 	.qc-home :global(main) {
 		display: block;
 	}
 
 	.qc-skip-link {
 		position: absolute;
-		/* Off-canvas without widening the page: left:-9999px would create real
+		/* Translated out of view rather than left: -9999px, which was itself real
 		   horizontal overflow measurable at 320px. */
 		left: 0;
 		top: 0;
@@ -185,11 +180,5 @@
 
 	.qc-skip-link:focus {
 		transform: translateY(0);
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.qc-skip-link {
-			transition: none;
-		}
 	}
 </style>

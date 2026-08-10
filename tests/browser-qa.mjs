@@ -169,6 +169,205 @@ const HELPERS = `
 
 /* --------------------------------------------------------------- checks --- */
 
+async function checkInitialStability(ws, url, width, label) {
+	/*
+	 * The layout-shift contract, measured rather than reasoned about.
+	 *
+	 * The comparer bar is server-rendered, so its height at first paint must be
+	 * its final height; and nothing is restored from storage, so hydration must
+	 * not move anything either. This samples header/main geometry as early as the
+	 * protocol allows and again after everything has settled, including the
+	 * dynamically imported dialog module.
+	 */
+	await setViewport(ws, width);
+	await rpc(ws, 'Page.navigate', { url });
+
+	/*
+	 * The "first paint" sample waits for stylesheets to stop arriving.
+	 *
+	 * `vite dev` injects every stylesheet through JS, so a dev page goes from 1
+	 * sheet to 23 over several frames and the bar legitimately reflows by a few
+	 * pixels as later sheets land. A production build ships that CSS as
+	 * render-blocking <link>s, so none of it happens after paint. Sampling
+	 * before the sheets settle would therefore measure a dev artifact, not the
+	 * thing under test: whether HYDRATION and the dynamically imported dialog
+	 * move the page. Gating on a stable sheet count models production and still
+	 * catches any real post-hydration shift, which happens strictly later.
+	 */
+	let early = null;
+	let stableFor = 0;
+	let lastSheets = -1;
+	for (let i = 0; i < 240; i++) {
+		await new Promise((r) => setTimeout(r, 25));
+		const probe = await evaluate(
+			ws,
+			`(() => {
+        const header = document.querySelector('.qc-home header');
+        const main = document.querySelector('#main');
+        const bar = document.querySelector('.pc-bar');
+        if (!header || !main) return null;
+        const t = (el) => (el ? Math.round(el.getBoundingClientRect().top) : null);
+        return {
+          header: t(header),
+          main: t(main),
+          bar: bar ? Math.round(bar.getBoundingClientRect().height) : 0,
+          sheets: document.styleSheets.length
+        };
+      })()`
+		);
+		if (!probe) continue;
+		if (probe.sheets === lastSheets) stableFor++;
+		else stableFor = 0;
+		lastSheets = probe.sheets;
+		if (stableFor >= 3) {
+			early = probe;
+			break;
+		}
+	}
+
+	if (!early) {
+		record(false, label, 'initial stability: header/main never appeared');
+		return;
+	}
+
+	for (let i = 0; i < 120; i++) {
+		await new Promise((r) => setTimeout(r, 100));
+		if ((await evaluate(ws, 'document.readyState')) === 'complete') break;
+	}
+	await new Promise((r) => setTimeout(r, 700));
+
+	const late = await evaluate(
+		ws,
+		`(() => {
+      const header = document.querySelector('.qc-home header');
+      const main = document.querySelector('#main');
+      const bar = document.querySelector('.pc-bar');
+      const t = (el) => (el ? Math.round(el.getBoundingClientRect().top) : null);
+      return { header: t(header), main: t(main), bar: bar ? Math.round(bar.getBoundingClientRect().height) : 0 };
+    })()`
+	);
+
+	const headerShift = Math.abs(late.header - early.header);
+	const mainShift = Math.abs(late.main - early.main);
+	const barShift = Math.abs(late.bar - early.bar);
+
+	record(headerShift <= 1, label, `header moved ${headerShift}px between first paint and settled`);
+	record(mainShift <= 1, label, `main moved ${mainShift}px between first paint and settled`);
+	record(barShift <= 1, label, `comparer bar height changed ${barShift}px after mount (SSR shell mismatch)`);
+}
+
+async function checkStoredVariantIgnored(ws, label) {
+	/*
+	 * Contract: storage may be written but is never applied. A bare URL must
+	 * render quiet/scenario no matter what this browser chose last time.
+	 */
+	await evaluate(
+		ws,
+		`(() => {
+      localStorage.setItem('seaEstate.preview.v1', JSON.stringify({ v: 1, theme: 'atlas', copy: 'compare' }));
+      return true;
+    })()`
+	);
+
+	await navigate(ws, `${BASE}/`);
+
+	const state = await evaluate(
+		ws,
+		`(() => {
+      const home = document.querySelector('.qc-home');
+      const h1 = document.querySelector('h1');
+      return {
+        theme: home ? home.getAttribute('data-preview-theme') : null,
+        h1: h1 ? h1.textContent.trim().slice(0, 40) : '',
+        stored: localStorage.getItem('seaEstate.preview.v1')
+      };
+    })()`
+	);
+
+	record(state.theme === 'quiet', label, `bare URL applied a stored theme: ${state.theme}`);
+	record(/-сценарий|сценарий/i.test(state.h1), label, `bare URL applied a stored copy variant: "${state.h1}"`);
+	record(!!state.stored, label, 'the stored record was cleared; it should be written, just not read');
+
+	await evaluate(ws, `localStorage.removeItem('seaEstate.preview.v1'); true`);
+}
+
+async function checkCopySwitchIsStable(ws, width, label) {
+	/*
+	 * Copy must not move the page; theme is allowed to, because the approved
+	 * B and C directions differ in density. Asserting the copy case keeps that
+	 * distinction from rotting into "everything shifts".
+	 */
+	await setViewport(ws, width);
+	await navigate(ws, `${BASE}/?preview_theme=quiet&preview_copy=scenario`);
+
+	const before = await evaluate(
+		ws,
+		`(() => { const el = document.querySelector('#process'); return el ? Math.round(el.getBoundingClientRect().top) : null; })()`
+	);
+	if (before === null) {
+		record(false, label, 'copy stability: #process not found');
+		return;
+	}
+
+	const opened = await evaluate(
+		ws,
+		`(() => { const t = document.querySelector('.pc-bar button'); if (!t) return false; t.focus(); t.click(); return true; })()`
+	);
+	if (!opened) {
+		record(false, label, 'copy stability: comparer trigger not found');
+		return;
+	}
+	await new Promise((r) => setTimeout(r, 500));
+
+	const switched = await evaluate(
+		ws,
+		`(() => { const r = document.querySelector('input[name="preview-copy"][value="compare"]'); if (!r) return false; r.click(); return true; })()`
+	);
+	if (!switched) {
+		record(false, label, 'copy stability: copy radio not found in the dialog');
+		return;
+	}
+	await new Promise((r) => setTimeout(r, 500));
+
+	const after = await evaluate(
+		ws,
+		`(() => { const el = document.querySelector('#process'); return el ? Math.round(el.getBoundingClientRect().top) : null; })()`
+	);
+
+	const delta = Math.abs(after - before);
+	record(delta <= 1, label, `switching COPY moved #process by ${delta}px (must be <= 1)`);
+
+	await rpc(ws, 'Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+	await rpc(ws, 'Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+	await new Promise((r) => setTimeout(r, 250));
+}
+
+async function checkH1Wrapping(ws, width, label) {
+	const data = await evaluate(
+		ws,
+		`${HELPERS}
+    (() => {
+      const h1 = document.querySelector('h1');
+      if (!h1) return null;
+      const cs = getComputedStyle(h1);
+      return {
+        lines: window.__qa.lines(h1),
+        overflowWrap: cs.overflowWrap || cs.wordWrap,
+        wordBreak: cs.wordBreak
+      };
+    })()`
+	);
+	if (!data) return;
+	record(data.lines <= 4, label, `H1 wraps to ${data.lines} lines (max 4)`);
+	// break-word split Russian words mid-stem, which reads as a typo.
+	record(
+		data.overflowWrap !== 'break-word' && data.wordBreak !== 'break-all',
+		label,
+		`H1 allows word splitting (overflow-wrap: ${data.overflowWrap}, word-break: ${data.wordBreak})`
+	);
+}
+
+
 async function checkOverflow(ws, width, label) {
 	const data = await evaluate(
 		ws,
@@ -522,7 +721,9 @@ async function checkComparerInert(ws, label) {
 	);
 	record(state.open, label, 'comparer dialog did not open');
 	record(state.contentInert === true, label, 'comparer background is not inert for assistive tech');
-	record(state.barInert === false, label, 'the comparer bar inerted itself along with the page');
+	// The bar is background while the dialog is open: leaving it reachable let a
+	// screen-reader user tab back onto the trigger behind an open modal.
+	record(state.barInert === true, label, 'the comparer bar is still reachable behind its own dialog');
 	record(state.activeInside, label, 'comparer dialog did not take initial focus');
 
 	await rpc(ws, 'Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
@@ -619,6 +820,7 @@ async function main() {
 					await checkOverflow(ws, width, label);
 					await checkCtaBackgrounds(ws, label);
 					await checkHero(ws, width, label);
+					if (width <= 390) await checkH1Wrapping(ws, width, label);
 					if (width === 320) await checkSkipLinkAndLandmarks(ws, label);
 
 					const slot = await measureHeroSlot(ws);
@@ -628,6 +830,22 @@ async function main() {
 					}
 				}
 			}
+		}
+
+		/* Initial-load stability, pre/post dynamic mount, at the widths where the
+		   comparer bar wraps differently. */
+		for (const width of [320, 390, 768]) {
+			await checkInitialStability(ws, `${BASE}/?preview_theme=atlas&preview_copy=compare`, width, `initial@${width}`);
+			await checkInitialStability(ws, `${BASE}/`, width, `initial-bare@${width}`);
+		}
+
+		/* Contract: stored variants are written but never applied. */
+		await setViewport(ws, 390);
+		await checkStoredVariantIgnored(ws, 'storage-ignored');
+
+		/* Copy switch keeps layout; theme switch is allowed to reflow. */
+		for (const width of [390, 1440]) {
+			await checkCopySwitchIsStable(ws, width, `copy-stable@${width}`);
 		}
 
 		/* Dialogs once per breakpoint rather than 45 times. */

@@ -11,7 +11,6 @@ import {
 	allowTheme,
 	allowCopy,
 	parseQueryPreview,
-	parseStoredPreview,
 	serializeStoredPreview,
 	resolvePreviewVariant,
 	buildPreviewSearch,
@@ -131,53 +130,43 @@ test('a URLSearchParams instance is accepted directly', () => {
 });
 
 /* ---------------------------------------------------------------------------
- * Stored preference — versioned, hostile input tolerated
+ * Stored preference — write-only, never an input to a render
  * ------------------------------------------------------------------------ */
 
 test('the storage key is versioned', () => {
 	assert.equal(PREVIEW_STORAGE_KEY, 'seaEstate.preview.v1');
 });
 
-test('a well-formed record round-trips', () => {
-	const raw = serializeStoredPreview({ theme: 'atlas', copy: 'evidence' });
-	assert.deepEqual(parseStoredPreview(raw), { theme: 'atlas', copy: 'evidence' });
+test('serializing keeps only the two allowlisted ids', () => {
+	assert.deepEqual(JSON.parse(serializeStoredPreview({ theme: 'atlas', copy: 'evidence' })), {
+		v: 1,
+		theme: 'atlas',
+		copy: 'evidence'
+	});
 });
 
 test('serializing junk falls back to the production pair', () => {
-	assert.deepEqual(parseStoredPreview(serializeStoredPreview({ theme: 'x', copy: 'y' })), {
+	assert.deepEqual(JSON.parse(serializeStoredPreview({ theme: 'x', copy: 'y' })), {
+		v: 1,
 		theme: 'quiet',
 		copy: 'scenario'
 	});
-	assert.deepEqual(parseStoredPreview(serializeStoredPreview()), {
+	assert.deepEqual(JSON.parse(serializeStoredPreview()), {
+		v: 1,
 		theme: 'quiet',
 		copy: 'scenario'
 	});
 });
 
-test('a record from a future or missing version is discarded', () => {
-	assert.deepEqual(parseStoredPreview('{"v":2,"theme":"atlas","copy":"compare"}'), {
-		theme: null,
-		copy: null
-	});
-	assert.deepEqual(parseStoredPreview('{"theme":"atlas","copy":"compare"}'), {
-		theme: null,
-		copy: null
-	});
-});
-
-test('corrupt storage never throws', () => {
-	for (const raw of ['', null, 'not json', '[]', 'null', '"quiet"', '{"v":1}']) {
-		assert.doesNotThrow(() => parseStoredPreview(raw));
-	}
-	assert.deepEqual(parseStoredPreview('not json'), { theme: null, copy: null });
-	assert.deepEqual(parseStoredPreview('{"v":1}'), { theme: null, copy: null });
-});
-
-test('an out-of-allowlist id inside a valid record is dropped', () => {
-	assert.deepEqual(parseStoredPreview('{"v":1,"theme":"neon","copy":"compare"}'), {
-		theme: null,
-		copy: 'compare'
-	});
+test('nothing reads stored state back — the module exposes no parser', async () => {
+	/*
+	 * The contract change that closes initial CLS: a bare URL always renders
+	 * quiet/scenario. Keeping a parser around would be an invitation to wire
+	 * restore back in, so its absence is asserted rather than assumed.
+	 */
+	const module = await import('../src/lib/preview-comparer.js');
+	assert.equal('parseStoredPreview' in module, false);
+	assert.equal(typeof module.serializeStoredPreview, 'function');
 });
 
 /* ---------------------------------------------------------------------------
@@ -197,20 +186,36 @@ test('production ignores the query string entirely', () => {
 	});
 });
 
-test('production ignores a leftover stored preference', () => {
+test('a bare URL renders the production pair even in a preview', () => {
+	/*
+	 * The layout-shift contract. The server cannot see localStorage, so any
+	 * stored variant could only be applied after hydration — one frame late,
+	 * moving the page. Resolution therefore reads the query and nothing else.
+	 */
+	const resolved = resolvePreviewVariant({ enabled: true, query: {} });
+	assert.equal(resolved.theme, 'quiet');
+	assert.equal(resolved.copy, 'scenario');
+	assert.equal(resolved.themeSource, 'default');
+	assert.equal(resolved.copySource, 'default');
+});
+
+test('a stored preference passed in by mistake is ignored', () => {
+	// The parameter no longer exists; an extra key must not resurrect it.
 	const resolved = resolvePreviewVariant({
-		enabled: false,
+		enabled: true,
+		query: {},
 		stored: { theme: 'mediterranean', copy: 'evidence' }
 	});
 	assert.equal(resolved.theme, 'quiet');
 	assert.equal(resolved.copy, 'scenario');
+	assert.equal(resolved.themeSource, 'default');
+	assert.equal(resolved.copySource, 'default');
 });
 
-test('query beats storage', () => {
+test('the query is the only source, and both sources report as such', () => {
 	const resolved = resolvePreviewVariant({
 		enabled: true,
-		query: { theme: 'atlas', copy: 'compare' },
-		stored: { theme: 'mediterranean', copy: 'evidence' }
+		query: { theme: 'atlas', copy: 'compare' }
 	});
 	assert.equal(resolved.theme, 'atlas');
 	assert.equal(resolved.copy, 'compare');
@@ -218,28 +223,14 @@ test('query beats storage', () => {
 	assert.equal(resolved.copySource, 'query');
 });
 
-test('storage beats defaults when the query is silent', () => {
-	const resolved = resolvePreviewVariant({
-		enabled: true,
-		stored: { theme: 'mediterranean', copy: 'evidence' }
-	});
-	assert.equal(resolved.theme, 'mediterranean');
-	assert.equal(resolved.copy, 'evidence');
-	assert.equal(resolved.themeSource, 'storage');
-	assert.equal(resolved.copySource, 'storage');
-});
-
 test('the two axes resolve independently', () => {
-	// A link that pins only the theme must not reset a stored copy choice.
-	const resolved = resolvePreviewVariant({
-		enabled: true,
-		query: { theme: 'atlas' },
-		stored: { theme: 'quiet', copy: 'compare' }
-	});
+	// A link that pins only the theme leaves the copy at its default rather
+	// than being rejected as incomplete.
+	const resolved = resolvePreviewVariant({ enabled: true, query: { theme: 'atlas' } });
 	assert.equal(resolved.theme, 'atlas');
 	assert.equal(resolved.themeSource, 'query');
-	assert.equal(resolved.copy, 'compare');
-	assert.equal(resolved.copySource, 'storage');
+	assert.equal(resolved.copy, 'scenario');
+	assert.equal(resolved.copySource, 'default');
 });
 
 test('an enabled preview with no inputs is the production pair', () => {

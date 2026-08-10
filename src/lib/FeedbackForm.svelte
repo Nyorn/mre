@@ -338,20 +338,28 @@
         color: var(--qc-muted, #62777c);
     }
     .input-container {
-        position: relative; /* Установите относительное позиционирование */
-        margin-bottom: 20px; /* Отступ между полями */
+        margin-bottom: 8px;
     }
+    /*
+     * Errors are in normal flow with a reserved multi-line area.
+     *
+     * They used to be position: absolute at bottom: -10px, so the phone
+     * message — the only one long enough to wrap — overlapped the field below
+     * at 320 and 390. Reserving two lines means the message appears without
+     * moving anything and a two-line message has somewhere to go.
+     */
     .error-message {
+        display: block;
+        min-height: 38px;
         /* #e83e8c on the old dark panel; on a light surface it is 3.4:1, so the
            error text moves to the warning ink, which is 7.5:1 here. */
         color: var(--qc-warning-text, #604c12);
         font-weight: 600;
         font-size: 14px;
-        margin-top: 2px;
-        position: absolute; /* Абсолютное позиционирование */
-        bottom: -10px; /* Расположение под полем ввода */
-        left: 0; /* Выравнивание по левому краю */
+        line-height: 19px;
+        margin-top: 4px;
     }
+    /* Reserved space is kept when empty, so showing an error moves nothing. */
     .error-message.hidden {
         visibility: hidden;
     }
@@ -373,6 +381,12 @@
         min-height: 48px;
         width: 100%;
         margin-top: 32px;
+    }
+
+    .submit-button:hover {
+        /* Active theme's pressed tone. The legacy #007bff hover is gone. */
+        background-color: var(--qc-sea-800, #005653);
+        border-color: var(--qc-sea-800, #005653);
     }
 
     .submit-button:focus-visible {

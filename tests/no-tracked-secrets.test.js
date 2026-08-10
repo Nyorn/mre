@@ -82,6 +82,8 @@ test('no source module reads Contentful credentials through $env/static/private'
 	 */
 	const offenders = trackedFiles
 		.filter((f) => f.startsWith('src/') && /\.(js|ts|svelte)$/.test(f))
+		// A file can be tracked but deleted in the working tree mid-change.
+		.filter((f) => existsSync(path.join(root, f)))
 		.filter((f) => {
 			const source = stripComments(readFileSync(path.join(root, f), 'utf8'));
 			return (

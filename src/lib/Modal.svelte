@@ -19,7 +19,7 @@
 -->
 <script>
   import { onDestroy, tick } from 'svelte';
-  import { modalStack } from '$lib/store.js';
+  import { modalStack, previewTheme } from '$lib/store.js';
   import FeedbackForm from '$lib/FeedbackForm.svelte';
   import ObjectCardModal from '$lib/ObjectCardModal.svelte';
   import ImageViewer from '$lib/ImageViewer.svelte';
@@ -151,8 +151,17 @@
 
 {#if isOpen && top}
   <div class="modal-overlay" role="presentation" on:click={onBackdropClick}>
+    <!--
+      data-preview-theme mirrors the home page's active direction. The modal
+      renders here in the layout, outside .qc-home, so the theme tokens scoped to
+      the home wrapper never reached it and the enquiry window stayed Quiet Coast
+      under B and C — the one surface a partner scrutinises most. Production
+      never sets the store, so the attribute is absent and this renders in the
+      default palette.
+    -->
     <div
       class="modal-window"
+      data-preview-theme={$previewTheme || null}
       role="dialog"
       aria-modal="true"
       aria-label={dialogName}
@@ -218,8 +227,9 @@
 
   .modal-window {
     position: relative;
-    background: #ffffff;
-    border-radius: 18px;
+    background: var(--qc-surface, #ffffff);
+    border: 1px solid var(--qc-border, transparent);
+    border-radius: var(--qc-radius, 18px);
     max-width: min(560px, 100%);
     width: 100%;
     max-height: calc(100vh - 32px);
@@ -248,7 +258,7 @@
     background: transparent;
     border: none;
     border-radius: 8px;
-    color: #1f2933;
+    color: var(--qc-ink-950, #1f2933);
     cursor: pointer;
     z-index: 2;
   }
@@ -258,7 +268,7 @@
   }
 
   .close-button:focus-visible {
-    outline: 3px solid #0b73b9;
+    outline: 3px solid var(--qc-focus, #0b73b9);
     outline-offset: 2px;
   }
 

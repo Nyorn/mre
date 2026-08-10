@@ -9,10 +9,14 @@
  *      this function, and no PUBLIC_* variable is consulted, so the switcher
  *      cannot be turned on from the outside on the production site.
  *
- *   2. resolvePreviewVariant({ enabled, query, stored }) — WHICH bundle shows?
+ *   2. resolvePreviewVariant({ enabled, query }) — WHICH bundle shows?
  *      Only ever consulted when (1) already said yes. When `enabled` is false
- *      this returns the production defaults and ignores both inputs, which is
- *      the property the unit tests pin down.
+ *      this returns the production defaults and ignores the query, which is the
+ *      property the unit tests pin down.
+ *
+ *      Resolution reads the QUERY ONLY. Stored state is deliberately not an
+ *      input: a bare URL always renders quiet/scenario. See the storage note
+ *      on PREVIEW_STORAGE_KEY below.
  *
  * Everything here is pure: no window, no document, no fetch. The callers own
  * the side effects.
@@ -22,7 +26,18 @@
 // not resolve Vite aliases.
 import { isProductionContext, isDeployPreviewContext } from './deployment-gate.js';
 
-/** Bumped only when the stored shape changes; an unknown version is discarded. */
+/*
+ * Storage is WRITE-ONLY.
+ *
+ * The comparer records the last choice so a reviewer can see what they picked,
+ * but nothing ever reads it back into a render. Restoring it after hydration
+ * was the one remaining source of unexpected layout shift on initial load: the
+ * server cannot see localStorage, so the first paint was always the default and
+ * the restored variant arrived a frame later.
+ *
+ * The shareable query URL is the partner-facing source of truth instead. That
+ * closes initial CLS without needing a server-readable cookie.
+ */
 export const PREVIEW_STORAGE_KEY = 'seaEstate.preview.v1';
 
 export const QUERY_THEME = 'preview_theme';
@@ -109,32 +124,9 @@ export function parseQueryPreview(search) {
 }
 
 /**
- * Parse the versioned localStorage record. Corrupt JSON, a foreign shape or an
- * out-of-allowlist id all degrade to null rather than throwing, because this
- * runs on a visitor's machine where the value may be anything.
- *
- * @param {string | null} raw
+ * Serialize for localStorage. Only two ids are ever written — no PII, and
+ * nothing reads this back during a render.
  */
-export function parseStoredPreview(raw) {
-	if (!raw) return { theme: null, copy: null };
-
-	let parsed;
-	try {
-		parsed = JSON.parse(raw);
-	} catch {
-		return { theme: null, copy: null };
-	}
-
-	if (!parsed || typeof parsed !== 'object') return { theme: null, copy: null };
-	if (parsed.v !== 1) return { theme: null, copy: null };
-
-	return {
-		theme: allowTheme(parsed.theme),
-		copy: allowCopy(parsed.copy)
-	};
-}
-
-/** Serialize for localStorage. Only two ids are ever written — no PII. */
 export function serializeStoredPreview({ theme, copy } = {}) {
 	return JSON.stringify({
 		v: 1,
@@ -146,17 +138,20 @@ export function serializeStoredPreview({ theme, copy } = {}) {
 /**
  * Resolve the active bundle.
  *
- * Priority when enabled: query allowlist → stored preference → defaults.
- * The two axes resolve independently, so `?preview_theme=atlas` alone keeps the
- * stored (or default) copy rather than silently resetting it.
+ * Priority when enabled: query allowlist → defaults. That is the whole list.
+ * A bare URL renders quiet/scenario even if this browser previously chose
+ * something else, which is what makes the server render and the first client
+ * render identical and removes initial layout shift by construction.
  *
- * When disabled, both inputs are ignored entirely. That is the production
- * guarantee: a crafted URL or a leftover localStorage record from a preview
- * session cannot change what the live site renders.
+ * The two axes resolve independently, so `?preview_theme=atlas` alone leaves
+ * the copy at its default rather than being rejected as incomplete.
  *
- * @param {{ enabled?: boolean, query?: {theme?: string|null, copy?: string|null}, stored?: {theme?: string|null, copy?: string|null} }} input
+ * When disabled, the query is ignored entirely. That is the production
+ * guarantee: a crafted URL cannot change what the live site renders.
+ *
+ * @param {{ enabled?: boolean, query?: {theme?: string|null, copy?: string|null} }} input
  */
-export function resolvePreviewVariant({ enabled = false, query = {}, stored = {} } = {}) {
+export function resolvePreviewVariant({ enabled = false, query = {} } = {}) {
 	if (!enabled) {
 		return {
 			theme: DEFAULT_THEME,
@@ -168,14 +163,12 @@ export function resolvePreviewVariant({ enabled = false, query = {}, stored = {}
 
 	const queryTheme = allowTheme(query.theme);
 	const queryCopy = allowCopy(query.copy);
-	const storedTheme = allowTheme(stored.theme);
-	const storedCopy = allowCopy(stored.copy);
 
 	return {
-		theme: queryTheme || storedTheme || DEFAULT_THEME,
-		copy: queryCopy || storedCopy || DEFAULT_COPY,
-		themeSource: queryTheme ? 'query' : storedTheme ? 'storage' : 'default',
-		copySource: queryCopy ? 'query' : storedCopy ? 'storage' : 'default'
+		theme: queryTheme || DEFAULT_THEME,
+		copy: queryCopy || DEFAULT_COPY,
+		themeSource: queryTheme ? 'query' : 'default',
+		copySource: queryCopy ? 'query' : 'default'
 	};
 }
 

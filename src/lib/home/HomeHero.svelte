@@ -74,8 +74,17 @@
 		margin: var(--qc-space-3) 0 0;
 		/* global.css centres h1/h2; the Quiet Coast shell is left-aligned. */
 		text-align: left;
-		/* Long Russian compounds must break rather than push the layout wide. */
-		overflow-wrap: break-word;
+		/*
+		 * No forced word breaking. overflow-wrap: break-word split Russian words
+		 * mid-stem at 320px ("Недвижи|мость"), which reads as a typo rather than
+		 * as wrapping. The longest word in any bundle fits the 320px measure at
+		 * this size, and the QA script asserts both the absence of overflow and a
+		 * ceiling of 4 lines, so a future longer headline fails loudly instead of
+		 * being silently hyphen-free but overflowing.
+		 */
+		overflow-wrap: normal;
+		word-break: normal;
+		hyphens: manual;
 	}
 
 	.hero-lead {

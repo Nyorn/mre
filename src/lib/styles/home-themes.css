@@ -1,33 +1,65 @@
 /*
- * Home theme bundles for the preview-only partner comparer.
+ * Theme bundles for the preview-only partner comparer.
  *
- * A direction is not a palette swap. Each bundle below changes tokens AND the
- * safe expression layer — density, type treatment, rule weight, card framing
- * and CTA shape — because three identical layouts in three tints do not tell a
- * partner anything about direction. What stays identical across all three is
- * everything that would confound the comparison: IA, section order, CTA labels,
- * CTA targets, and media (there is none — see HomeHero).
+ * A direction is not a palette swap. Each bundle changes tokens AND the
+ * expression layer — density, type scale, rule weight, radius, row gap — because
+ * three identical layouts in three tints tell a partner nothing about direction.
+ * What stays identical is everything that would confound the comparison: IA,
+ * section order, CTA labels, CTA targets, and media (there is none).
  *
- * Scoped to `.qc-home[data-preview-theme=…]` so nothing leaks to other routes;
- * `/objects` also uses qc- classes and must stay Quiet Coast. The attribute is
- * rendered server-side, so a shared link paints correctly on the first frame.
- * In production the attribute is never emitted and none of this matches.
+ * SCOPING. Selectors key off the [data-preview-theme] attribute rather than
+ * `.qc-home[...]`, because the enquiry modal renders in the layout OUTSIDE the
+ * home wrapper and was staying Quiet Coast under every direction. The home page
+ * publishes the active id to a store and the modal mirrors it onto its own
+ * element, so both surfaces carry the attribute and both follow the theme.
+ * Production never sets it, so none of this matches and nothing else on the site
+ * can be themed by accident.
  *
- * Contrast: every text pair computed against WCAG 2.1 before landing here;
- * ratios are quoted per bundle and repeated in the handoff doc.
+ * LAYOUT CONTRACT. Directions B and C intentionally differ in spacing and type
+ * scale, so switching theme reflows lower sections. That is approved and happens
+ * only as the direct result of a user choosing a theme. Switching COPY must not
+ * move anything, which is why the hero reserves a measured slot instead.
  *
- * Markers (--qc-sand) are decorative only in every direction. Quiet's #c6a77b
- * is 2.24:1 and Atlas's #B66A45 is 3.75:1 against their surfaces, so neither is
- * ever used as text or as the sole carrier of meaning.
+ * Contrast: every text pair computed against WCAG 2.1 before landing here.
+ * Markers (--qc-sand) are decorative in every direction and never used as text.
  */
 
 /* ---------------------------------------------------------------------------
+ * Expression-token defaults, for production, where no theme attribute is set.
+ *
+ * This block sits FIRST and is scoped to `.qc-home` only. Both matter:
+ *
+ *  - `[data-preview-theme]` in this selector would tie with every
+ *    `[data-preview-theme='x']` block at 0-1-0 and, being later in the file,
+ *    would win — which is exactly what happened: the modal's CTA radius stayed
+ *    8px under Atlas instead of 2px. Same specificity trap as the Tailwind
+ *    preflight tie on button backgrounds.
+ *  - Being first means a themed `.qc-home[data-preview-theme='x']` overrides it
+ *    on source order at equal specificity.
+ *
+ * Surfaces that carry the attribute without being `.qc-home` — the enquiry
+ * modal — take every token from their theme block, and fall back through
+ * `var(--token, literal)` at each use site when no theme is active.
+ * ------------------------------------------------------------------------ */
+.qc-home {
+	--qc-section-y: var(--qc-space-7);
+	--qc-section-y-lg: var(--qc-space-8);
+	--qc-rule-weight: 1px;
+	--qc-row-gap: var(--qc-space-4);
+	--qc-display-tracking: -0.025em;
+	--qc-eyebrow-tracking: 0.1em;
+	--qc-eyebrow-size: 12px;
+	--qc-eyebrow-line: 16px;
+	--qc-cta-radius: 8px;
+}
+
+/* ---------------------------------------------------------------------------
  * quiet — Quiet Coast. brand-delta.v1 §3, Direction A. Production default.
- * Evidence-led advisory: airy, serif display, hairline rules, generous spacing.
+ * Evidence-led advisory: airy, serif display, hairline rules.
  * ink950/surface 14.80  ink700/surface 8.74  muted/surface 4.64
  * white/cta 6.37  cta/surface 6.26  border-strong/surface 3.28
  * ------------------------------------------------------------------------ */
-.qc-home[data-preview-theme='quiet'] {
+[data-preview-theme='quiet'] {
 	--qc-ink-950: #102a30;
 	--qc-ink-700: #344e54;
 	--qc-muted: #62777c;
@@ -45,24 +77,28 @@
 	--qc-font-display: Georgia, 'Times New Roman', serif;
 	--qc-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
-	/* Expression layer */
 	--qc-section-y: var(--qc-space-7);
+	--qc-section-y-lg: var(--qc-space-8);
 	--qc-rule-weight: 1px;
 	--qc-radius: 8px;
 	--qc-row-gap: var(--qc-space-4);
 	--qc-display-tracking: -0.025em;
 	--qc-eyebrow-tracking: 0.1em;
+	--qc-eyebrow-size: 12px;
+	--qc-eyebrow-line: 16px;
 	--qc-cta-radius: 8px;
 }
 
 /* ---------------------------------------------------------------------------
- * mediterranean — Mediterranean Modern. brand-delta.v1 §4, Direction B.
- * Relocation storytelling: warmer ground, softer corners, tighter rhythm, a
- * more expressive display face and terracotta as an editorial marker only.
+ * mediterranean — Mediterranean Modern, Direction B. Values supplied by Haven
+ * and used verbatim: sea-800 #15464B, Georgia/Times display with 700 headings,
+ * 56/88 section rhythm, 4px radius on panel/card/CTA, 24px row gap, and the
+ * H1 38/42→60/64, H2 30/34→40/44, body 16/25, lead 18/29 scale.
+ * Explicitly not in this direction: any 14px step, any pill radius.
  * ink950/surface 12.80  ink700/surface 7.58  muted/surface 4.77
- * white/cta 7.59  cta/surface 7.09  marker/surface 5.36  border-strong 3.52
+ * white/cta(700) 7.59  white/cta(800 #15464B) 9.13  marker/surface 5.36
  * ------------------------------------------------------------------------ */
-.qc-home[data-preview-theme='mediterranean'] {
+[data-preview-theme='mediterranean'] {
 	--qc-ink-950: #213126;
 	--qc-ink-700: #465346;
 	--qc-muted: #6b705f;
@@ -71,33 +107,67 @@
 	--qc-border: #d9d5c9;
 	--qc-border-strong: #808672;
 	--qc-sea-700: #1e5c63;
-	--qc-sea-800: #17484e;
+	--qc-sea-800: #15464b;
 	--qc-sea-soft: #dceaea;
 	--qc-focus: #0b73b9;
 	--qc-sand: #a14e37;
 	--qc-warning-text: #604c12;
 	--qc-warning-surface: #fff4d6;
-	--qc-font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+	--qc-font-display: Georgia, 'Times New Roman', Times, serif;
 	--qc-font-ui: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
 
-	/* Expression layer: denser vertical rhythm, rounder frames. */
-	--qc-section-y: var(--qc-space-6);
+	--qc-section-y: 56px;
+	--qc-section-y-lg: 88px;
 	--qc-rule-weight: 1px;
-	--qc-radius: 14px;
-	--qc-row-gap: var(--qc-space-3);
+	--qc-radius: 4px;
+	--qc-row-gap: 24px;
 	--qc-display-tracking: -0.015em;
-	--qc-eyebrow-tracking: 0.14em;
-	--qc-cta-radius: 999px;
+	--qc-eyebrow-tracking: 0.12em;
+	--qc-eyebrow-size: 12px;
+	--qc-eyebrow-line: 16px;
+	--qc-cta-radius: 4px;
 }
 
-.qc-home[data-preview-theme='mediterranean'] .qc-display-1,
-.qc-home[data-preview-theme='mediterranean'] .qc-heading-2 {
-	font-style: normal;
-	line-height: 1.08;
+[data-preview-theme='mediterranean'] .qc-display-1 {
+	font-weight: 700;
+	font-size: 38px;
+	line-height: 42px;
 }
 
-/* The one place terracotta appears: a decorative section marker, never text. */
-.qc-home[data-preview-theme='mediterranean'] .qc-label::before {
+[data-preview-theme='mediterranean'] .qc-heading-2 {
+	font-weight: 700;
+	font-size: 30px;
+	line-height: 34px;
+}
+
+[data-preview-theme='mediterranean'] .qc-heading-3 {
+	font-weight: 700;
+}
+
+[data-preview-theme='mediterranean'] .qc-body {
+	font-size: 16px;
+	line-height: 25px;
+}
+
+[data-preview-theme='mediterranean'] .qc-body-lg {
+	font-size: 18px;
+	line-height: 29px;
+}
+
+@media (min-width: 768px) {
+	[data-preview-theme='mediterranean'] .qc-display-1 {
+		font-size: 60px;
+		line-height: 64px;
+	}
+
+	[data-preview-theme='mediterranean'] .qc-heading-2 {
+		font-size: 40px;
+		line-height: 44px;
+	}
+}
+
+/* The one place terracotta appears: a decorative rule, never text. */
+[data-preview-theme='mediterranean'] .qc-label::before {
 	content: '';
 	display: inline-block;
 	width: 18px;
@@ -108,87 +178,107 @@
 }
 
 /* ---------------------------------------------------------------------------
- * atlas — Coastal Atlas. Palette supplied by Haven and used verbatim:
- * #17343A #36545B #627272 #F8F5EC #EDF1EA #CAD5CE #1F6670 #164E56 #B66A45.
- * Cost-of-ownership register: squarer frames, tighter tracking, tabular
- * numerals, heavier rules, sans display — the data-desk reading of the brand.
- * ink950/surface 12.13  ink700/surface 7.48  muted/surface 4.62
- * white/cta 6.58  cta/surface 6.03  border-strong 3.20
+ * atlas — Coastal Atlas, Direction C. Values supplied by Haven and used
+ * verbatim: border-strong #7F908A, sea-soft #DDE8E3, Georgia display, 40/64
+ * section rhythm, 1px rules, 2px radius, 12px row gap, H1 36/40→54/59,
+ * H2 28/32→36/41, labels 11/16 at .12em tracking.
+ *
+ * FIELD GUIDE — read before extending this direction. Atlas is the coastal
+ * survey register: a Georgia display face, close rhythm, thin rules and squared
+ * corners, with tabular figures confined to .qc-data where actual numbers live.
+ * Headings stay proportional. It is NOT a SaaS dashboard and not an "asset desk"
+ * — no sans display face, no tabular headings, no dense data-grid chrome. Those
+ * were the drift in the earlier derived version and are deliberately reverted.
+ * ink950/surface 12.13  ink700/surface 7.48  muted/surface 4.62  white/cta 6.58
  * ------------------------------------------------------------------------ */
-.qc-home[data-preview-theme='atlas'] {
+[data-preview-theme='atlas'] {
 	--qc-ink-950: #17343a;
 	--qc-ink-700: #36545b;
 	--qc-muted: #627272;
 	--qc-surface: #f8f5ec;
 	--qc-surface-subtle: #edf1ea;
 	--qc-border: #cad5ce;
-	--qc-border-strong: #7a8d8d;
+	--qc-border-strong: #7f908a;
 	--qc-sea-700: #1f6670;
 	--qc-sea-800: #164e56;
-	--qc-sea-soft: #ddeaea;
+	--qc-sea-soft: #dde8e3;
 	--qc-focus: #0b73b9;
 	--qc-sand: #b66a45;
 	--qc-warning-text: #604c12;
 	--qc-warning-surface: #fff4d6;
-	--qc-font-display: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--qc-font-display: Georgia, 'Times New Roman', Times, serif;
 	--qc-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
-	/* Expression layer: compact, squared, register-like. */
-	--qc-section-y: var(--qc-space-6);
-	--qc-rule-weight: 2px;
+	--qc-section-y: 40px;
+	--qc-section-y-lg: 64px;
+	--qc-rule-weight: 1px;
 	--qc-radius: 2px;
-	--qc-row-gap: var(--qc-space-2);
+	--qc-row-gap: 12px;
 	--qc-display-tracking: -0.01em;
-	--qc-eyebrow-tracking: 0.16em;
+	--qc-eyebrow-tracking: 0.12em;
+	--qc-eyebrow-size: 11px;
+	--qc-eyebrow-line: 16px;
 	--qc-cta-radius: 2px;
 }
 
-.qc-home[data-preview-theme='atlas'] .qc-display-1,
-.qc-home[data-preview-theme='atlas'] .qc-heading-2,
-.qc-home[data-preview-theme='atlas'] .qc-heading-3 {
-	font-variant-numeric: tabular-nums;
-	font-weight: 700;
+[data-preview-theme='atlas'] .qc-display-1 {
+	font-size: 36px;
+	line-height: 40px;
 }
 
-.qc-home[data-preview-theme='atlas'] .qc-data {
+[data-preview-theme='atlas'] .qc-heading-2 {
+	font-size: 28px;
+	line-height: 32px;
+}
+
+@media (min-width: 768px) {
+	[data-preview-theme='atlas'] .qc-display-1 {
+		font-size: 54px;
+		line-height: 59px;
+	}
+
+	[data-preview-theme='atlas'] .qc-heading-2 {
+		font-size: 36px;
+		line-height: 41px;
+	}
+}
+
+/* Tabular figures only where figures actually live. Headings stay proportional. */
+[data-preview-theme='atlas'] .qc-data {
 	font-variant-numeric: tabular-nums;
 	letter-spacing: 0.01em;
-}
-
-/* ---------------------------------------------------------------------------
- * Shared consumption of the expression tokens.
- *
- * These read tokens rather than hard-coding per-theme values, so a direction is
- * expressed once in its block above. Defaults keep production (no attribute)
- * exactly as it was.
- * ------------------------------------------------------------------------ */
-.qc-home {
-	--qc-section-y: var(--qc-space-7);
-	--qc-rule-weight: 1px;
-	--qc-row-gap: var(--qc-space-4);
-	--qc-display-tracking: -0.025em;
-	--qc-eyebrow-tracking: 0.1em;
-	--qc-cta-radius: 8px;
 }
 
 .qc-home .qc-section {
 	padding-block: var(--qc-section-y);
 }
 
-.qc-home .qc-label {
+@media (min-width: 768px) {
+	.qc-home .qc-section {
+		padding-block: var(--qc-section-y-lg);
+	}
+}
+
+.qc-home .qc-label,
+[data-preview-theme] .qc-label {
 	letter-spacing: var(--qc-eyebrow-tracking);
+	font-size: var(--qc-eyebrow-size);
+	line-height: var(--qc-eyebrow-line);
 }
 
 .qc-home .qc-display-1 {
 	letter-spacing: var(--qc-display-tracking);
 }
 
-.qc-home .qc-cta {
+.qc-home .qc-cta,
+[data-preview-theme] .qc-cta {
 	border-radius: var(--qc-cta-radius);
 }
 
 .qc-home .qc-card,
-.qc-home .qc-panel {
+.qc-home .qc-panel,
+[data-preview-theme] .qc-card,
+[data-preview-theme] .qc-panel {
 	border-radius: var(--qc-radius);
 	border-width: var(--qc-rule-weight);
 }
