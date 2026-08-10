@@ -20,10 +20,29 @@
  * shared bucket so a flood of address-less requests is still slowed.
  */
 
-/** Requests allowed per address inside the window. */
+/*
+ * TWO BUDGETS, on purpose.
+ *
+ * The strict budget protects the expensive thing: attempts that actually reach
+ * the provider. It is consumed only by a confirmed send.
+ *
+ * The raw budget is much higher and is consumed by every request. It exists to
+ * slow a flood of junk (bad JSON, failed validation, tripped timing checks)
+ * without letting that junk eat the delivery allowance.
+ *
+ * Keeping these separate matters for a real person, not just for bots: someone
+ * who mistypes their phone five times, or whose form goes stale, must still be
+ * able to send the enquiry afterwards. Charging those failures to the delivery
+ * budget would lock a legitimate visitor out of the one action that matters.
+ */
+
+/** Confirmed sends allowed per address inside the window. */
 export const RATE_LIMIT_MAX = 5;
 
-/** Sliding window length. */
+/** Total requests of any kind allowed per address inside the window. */
+export const RAW_RATE_LIMIT_MAX = 40;
+
+/** Sliding window length, shared by both budgets. */
 export const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 
 /** Hard cap on tracked addresses, so the map cannot grow without bound. */
@@ -114,34 +133,44 @@ export function createRateLimiter({
 		}
 	}
 
+	/** Shared logic; `record` decides whether the attempt is charged. */
+	function evaluate(key, now, record) {
+		const bucket = key || UNKNOWN_KEY;
+
+		if (hits.size >= maxKeys && !hits.has(bucket)) {
+			prune(now);
+			// Still full after pruning: fail open rather than deny real visitors.
+			if (hits.size >= maxKeys) {
+				return { allowed: true, remaining: 0, retryAfterSeconds: 0, degraded: true };
+			}
+		}
+
+		const stamps = (hits.get(bucket) || []).filter((t) => now - t < windowMs);
+
+		if (stamps.length >= max) {
+			const oldest = stamps[0];
+			const retryAfterSeconds = Math.max(1, Math.ceil((windowMs - (now - oldest)) / 1000));
+			hits.set(bucket, stamps);
+			return { allowed: false, remaining: 0, retryAfterSeconds };
+		}
+
+		if (record) stamps.push(now);
+		hits.set(bucket, stamps);
+		return { allowed: true, remaining: max - stamps.length, retryAfterSeconds: 0 };
+	}
+
 	return {
 		/**
-		 * Record an attempt. Returns { allowed, remaining, retryAfterSeconds }.
-		 * Call once per accepted request, after cheap rejections.
+		 * Ask whether an attempt would be allowed WITHOUT charging it.
+		 * Used for the delivery budget, which is only charged on a real send.
 		 */
-		check(key, now = Date.now()) {
-			const bucket = key || UNKNOWN_KEY;
+		peek(key, now = Date.now()) {
+			return evaluate(key, now, false);
+		},
 
-			if (hits.size >= maxKeys && !hits.has(bucket)) {
-				prune(now);
-				// Still full after pruning: fail open rather than deny real visitors.
-				if (hits.size >= maxKeys) {
-					return { allowed: true, remaining: 0, retryAfterSeconds: 0, degraded: true };
-				}
-			}
-
-			const stamps = (hits.get(bucket) || []).filter((t) => now - t < windowMs);
-
-			if (stamps.length >= max) {
-				const oldest = stamps[0];
-				const retryAfterSeconds = Math.max(1, Math.ceil((windowMs - (now - oldest)) / 1000));
-				hits.set(bucket, stamps);
-				return { allowed: false, remaining: 0, retryAfterSeconds };
-			}
-
-			stamps.push(now);
-			hits.set(bucket, stamps);
-			return { allowed: true, remaining: max - stamps.length, retryAfterSeconds: 0 };
+		/** Charge one attempt against the budget and report the outcome. */
+		consume(key, now = Date.now()) {
+			return evaluate(key, now, true);
 		},
 
 		/** Test helper. */

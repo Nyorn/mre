@@ -9,6 +9,7 @@
    */
   import { onMount } from 'svelte';
   import { defaultMessageFor, readUtmParams } from '$lib/enquiry.js';
+  import { freshStartedAt, retryStartedAt } from '$lib/form-timing.js';
 
   export let objectName = '';
   export let objectId = '';
@@ -45,7 +46,7 @@
   }
 
   onMount(() => {
-    formStartedAt = Date.now();
+    formStartedAt = freshStartedAt();
     leadId = newLeadId();
   });
 
@@ -93,14 +94,15 @@
 
       if (response.ok && result.ok) {
         submissionState = 'success';
-        submissionResponse = objectName
-          ? `${result.message || 'Заявка отправлена.'} Объект: «${objectName}».`
-          : result.message || 'Заявка отправлена.';
-        // Only a confirmed send clears the fields.
+        const accepted =
+          result.message ||
+          'Почтовый сервис принял заявку к отправке. Доставка уведомления в офис ещё не подтверждена.';
+        submissionResponse = objectName ? `${accepted} Объект: «${objectName}».` : accepted;
+        // Only a confirmed hand-off to the provider clears the fields.
         name = phone = message = '';
-        // New enquiry from here on, so a fresh id and timer.
+        // Genuinely new enquiry from here on, so a fresh id and a fresh window.
         leadId = newLeadId();
-        formStartedAt = Date.now();
+        formStartedAt = freshStartedAt();
       } else {
         submissionState = 'error';
         canRetry = result.retryable === true;
@@ -118,16 +120,18 @@
          */
         if (result.new_lead_required) {
           leadId = newLeadId();
-          formStartedAt = Date.now();
+          formStartedAt = retryStartedAt();
           canRetry = true;
         }
 
         /*
-         * A stale page cannot be fixed by resubmitting the same timestamp, so
-         * refresh the timer here — the visitor keeps everything they typed.
+         * A stale or missing window cannot be fixed by resending the same mark,
+         * so restart it — backdated, because the message tells the visitor to
+         * press Отправить immediately and a fresh Date.now() would come straight
+         * back as too_fast. They keep everything they typed.
          */
         if (result.code === 'stale_form' || result.code === 'missing_timing') {
-          formStartedAt = Date.now();
+          formStartedAt = retryStartedAt();
         }
       }
     } catch (error) {

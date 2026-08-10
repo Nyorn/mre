@@ -66,9 +66,9 @@ test('requests are allowed up to the limit and refused after it', () => {
 	const limiter = createRateLimiter();
 	const now = 1_000_000;
 	for (let i = 0; i < RATE_LIMIT_MAX; i++) {
-		assert.equal(limiter.check('203.0.113.9', now).allowed, true, `attempt ${i + 1} should pass`);
+		assert.equal(limiter.consume('203.0.113.9', now).allowed, true, `attempt ${i + 1} should pass`);
 	}
-	const blocked = limiter.check('203.0.113.9', now);
+	const blocked = limiter.consume('203.0.113.9', now);
 	assert.equal(blocked.allowed, false);
 	assert.ok(blocked.retryAfterSeconds > 0, 'a refusal tells the caller when to come back');
 });
@@ -76,34 +76,34 @@ test('requests are allowed up to the limit and refused after it', () => {
 test('the window expires', () => {
 	const limiter = createRateLimiter();
 	const now = 1_000_000;
-	for (let i = 0; i < RATE_LIMIT_MAX; i++) limiter.check('203.0.113.9', now);
-	assert.equal(limiter.check('203.0.113.9', now).allowed, false);
+	for (let i = 0; i < RATE_LIMIT_MAX; i++) limiter.consume('203.0.113.9', now);
+	assert.equal(limiter.consume('203.0.113.9', now).allowed, false);
 	const later = now + RATE_LIMIT_WINDOW_MS + 1;
-	assert.equal(limiter.check('203.0.113.9', later).allowed, true, 'the window must slide');
+	assert.equal(limiter.consume('203.0.113.9', later).allowed, true, 'the window must slide');
 });
 
 test('addresses are limited independently', () => {
 	const limiter = createRateLimiter();
 	const now = 1_000_000;
-	for (let i = 0; i < RATE_LIMIT_MAX; i++) limiter.check('203.0.113.9', now);
-	assert.equal(limiter.check('203.0.113.9', now).allowed, false);
-	assert.equal(limiter.check('198.51.100.7', now).allowed, true, 'one abuser must not block others');
+	for (let i = 0; i < RATE_LIMIT_MAX; i++) limiter.consume('203.0.113.9', now);
+	assert.equal(limiter.consume('203.0.113.9', now).allowed, false);
+	assert.equal(limiter.consume('198.51.100.7', now).allowed, true, 'one abuser must not block others');
 });
 
 test('address-less requests share one bucket rather than bypassing the limit', () => {
 	const limiter = createRateLimiter();
 	const now = 1_000_000;
-	for (let i = 0; i < RATE_LIMIT_MAX; i++) limiter.check(UNKNOWN_KEY, now);
-	assert.equal(limiter.check(UNKNOWN_KEY, now).allowed, false);
+	for (let i = 0; i < RATE_LIMIT_MAX; i++) limiter.consume(UNKNOWN_KEY, now);
+	assert.equal(limiter.consume(UNKNOWN_KEY, now).allowed, false);
 });
 
 test('the tracked-key map is bounded and degrades open, not closed', () => {
 	const limiter = createRateLimiter({ maxKeys: 3, max: 1 });
 	const now = 1_000_000;
-	limiter.check('1.1.1.1', now);
-	limiter.check('2.2.2.2', now);
-	limiter.check('3.3.3.3', now);
-	const overflow = limiter.check('4.4.4.4', now);
+	limiter.consume('1.1.1.1', now);
+	limiter.consume('2.2.2.2', now);
+	limiter.consume('3.3.3.3', now);
+	const overflow = limiter.consume('4.4.4.4', now);
 	assert.equal(overflow.allowed, true, 'a full table must not start rejecting real visitors');
 	assert.ok(limiter.size() <= 3);
 });
