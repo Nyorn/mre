@@ -1,30 +1,29 @@
 /*
  * Home theme bundles for the preview-only partner comparer.
  *
- * Every component on the home page reads `--qc-*` custom properties, so a theme
- * is nothing but a complete override of that token set on the `.qc-home`
- * wrapper. Consequences that matter:
+ * A direction is not a palette swap. Each bundle below changes tokens AND the
+ * safe expression layer — density, type treatment, rule weight, card framing
+ * and CTA shape — because three identical layouts in three tints do not tell a
+ * partner anything about direction. What stays identical across all three is
+ * everything that would confound the comparison: IA, section order, CTA labels,
+ * CTA targets, and media (there is none — see HomeHero).
  *
- *   - Switching a theme repaints colours only. No component re-renders, no
- *     layout box changes, no image or data is re-fetched.
- *   - Bundles cannot be mixed. Each block below redeclares every token it
- *     changes, so there is no state in which half a palette applies.
- *   - Scoping to `.qc-home[data-preview-theme=...]` keeps the override off every
- *     other route. `/objects` also uses `qc-` classes and must stay Quiet Coast.
+ * Scoped to `.qc-home[data-preview-theme=…]` so nothing leaks to other routes;
+ * `/objects` also uses qc- classes and must stay Quiet Coast. The attribute is
+ * rendered server-side, so a shared link paints correctly on the first frame.
+ * In production the attribute is never emitted and none of this matches.
  *
- * The attribute is rendered server-side from the resolved variant, so the first
- * paint is already correct for a shared `?preview_theme=` link — no flash and
- * no hydration mismatch. In production the attribute is never emitted.
+ * Contrast: every text pair computed against WCAG 2.1 before landing here;
+ * ratios are quoted per bundle and repeated in the handoff doc.
  *
- * Contrast: every text/background pair below was computed against WCAG 2.1
- * (see docs/real-estate/home-coherence-preview-comparer.v1.md §5). Ratios are
- * quoted per theme. `--qc-border-strong` exists because a 1.3:1 hairline is
- * legal as decoration but not as the boundary of an interactive control
- * (1.4.11); secondary CTAs use the strong token.
+ * Markers (--qc-sand) are decorative only in every direction. Quiet's #c6a77b
+ * is 2.24:1 and Atlas's #B66A45 is 3.75:1 against their surfaces, so neither is
+ * ever used as text or as the sole carrier of meaning.
  */
 
 /* ---------------------------------------------------------------------------
- * quiet — Quiet Coast (brand-delta.v1 §3, Direction A). Production default.
+ * quiet — Quiet Coast. brand-delta.v1 §3, Direction A. Production default.
+ * Evidence-led advisory: airy, serif display, hairline rules, generous spacing.
  * ink950/surface 14.80  ink700/surface 8.74  muted/surface 4.64
  * white/cta 6.37  cta/surface 6.26  border-strong/surface 3.28
  * ------------------------------------------------------------------------ */
@@ -45,15 +44,23 @@
 	--qc-warning-surface: #fff4d6;
 	--qc-font-display: Georgia, 'Times New Roman', serif;
 	--qc-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+	/* Expression layer */
+	--qc-section-y: var(--qc-space-7);
+	--qc-rule-weight: 1px;
+	--qc-radius: 8px;
+	--qc-row-gap: var(--qc-space-4);
+	--qc-display-tracking: -0.025em;
+	--qc-eyebrow-tracking: 0.1em;
+	--qc-cta-radius: 8px;
 }
 
 /* ---------------------------------------------------------------------------
- * mediterranean — Mediterranean Modern (brand-delta.v1 §4, Direction B).
+ * mediterranean — Mediterranean Modern. brand-delta.v1 §4, Direction B.
+ * Relocation storytelling: warmer ground, softer corners, tighter rhythm, a
+ * more expressive display face and terracotta as an editorial marker only.
  * ink950/surface 12.80  ink700/surface 7.58  muted/surface 4.77
  * white/cta 7.59  cta/surface 7.09  marker/surface 5.36  border-strong 3.52
- *
- * Terracotta is the editorial marker only. It is not a CTA colour and never
- * carries warning/error semantics — warning tokens stay on the neutral pair.
  * ------------------------------------------------------------------------ */
 .qc-home[data-preview-theme='mediterranean'] {
 	--qc-ink-950: #213126;
@@ -70,46 +77,118 @@
 	--qc-sand: #a14e37;
 	--qc-warning-text: #604c12;
 	--qc-warning-surface: #fff4d6;
-	--qc-font-display: Georgia, 'Times New Roman', serif;
-	--qc-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--qc-font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+	--qc-font-ui: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+
+	/* Expression layer: denser vertical rhythm, rounder frames. */
+	--qc-section-y: var(--qc-space-6);
+	--qc-rule-weight: 1px;
+	--qc-radius: 14px;
+	--qc-row-gap: var(--qc-space-3);
+	--qc-display-tracking: -0.015em;
+	--qc-eyebrow-tracking: 0.14em;
+	--qc-cta-radius: 999px;
+}
+
+.qc-home[data-preview-theme='mediterranean'] .qc-display-1,
+.qc-home[data-preview-theme='mediterranean'] .qc-heading-2 {
+	font-style: normal;
+	line-height: 1.08;
+}
+
+/* The one place terracotta appears: a decorative section marker, never text. */
+.qc-home[data-preview-theme='mediterranean'] .qc-label::before {
+	content: '';
+	display: inline-block;
+	width: 18px;
+	height: 2px;
+	margin-right: 8px;
+	vertical-align: middle;
+	background: var(--qc-sand);
 }
 
 /* ---------------------------------------------------------------------------
- * atlas — Coastal Atlas, from the third option Haven recorded as "Coastal Asset
- * Desk" (site-design-brief.v1 brand_options_from_product_audit[2]): graphite,
- * fog, cobalt, amber for signals only, strict numeric typography.
- *
- * Only the one-line system description existed, so the token values below were
- * derived here and are pending Haven's approval — see the open question in the
- * handoff doc. Ratios as built:
- * ink950/surface 14.96  ink700/surface 8.74  muted/surface 5.40
- * white/cta 7.86  cta/surface 7.25  marker/surface 5.47  border-strong 3.35
- *
- * Numeric strictness is expressed by dropping the serif display face: this
- * direction sets headings in the same sans as the data layer.
+ * atlas — Coastal Atlas. Palette supplied by Haven and used verbatim:
+ * #17343A #36545B #627272 #F8F5EC #EDF1EA #CAD5CE #1F6670 #164E56 #B66A45.
+ * Cost-of-ownership register: squarer frames, tighter tracking, tabular
+ * numerals, heavier rules, sans display — the data-desk reading of the brand.
+ * ink950/surface 12.13  ink700/surface 7.48  muted/surface 4.62
+ * white/cta 6.58  cta/surface 6.03  border-strong 3.20
  * ------------------------------------------------------------------------ */
 .qc-home[data-preview-theme='atlas'] {
-	--qc-ink-950: #1c2126;
-	--qc-ink-700: #3e474e;
-	--qc-muted: #5d666d;
-	--qc-surface: #f4f6f7;
-	--qc-surface-subtle: #e9edef;
-	--qc-border: #cfd6da;
-	--qc-border-strong: #7c8891;
-	--qc-sea-700: #1b4fa0;
-	--qc-sea-800: #153d7c;
-	--qc-sea-soft: #dee7f5;
+	--qc-ink-950: #17343a;
+	--qc-ink-700: #36545b;
+	--qc-muted: #627272;
+	--qc-surface: #f8f5ec;
+	--qc-surface-subtle: #edf1ea;
+	--qc-border: #cad5ce;
+	--qc-border-strong: #7a8d8d;
+	--qc-sea-700: #1f6670;
+	--qc-sea-800: #164e56;
+	--qc-sea-soft: #ddeaea;
 	--qc-focus: #0b73b9;
-	--qc-sand: #8a5a00;
+	--qc-sand: #b66a45;
 	--qc-warning-text: #604c12;
 	--qc-warning-surface: #fff4d6;
 	--qc-font-display: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 	--qc-font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+	/* Expression layer: compact, squared, register-like. */
+	--qc-section-y: var(--qc-space-6);
+	--qc-rule-weight: 2px;
+	--qc-radius: 2px;
+	--qc-row-gap: var(--qc-space-2);
+	--qc-display-tracking: -0.01em;
+	--qc-eyebrow-tracking: 0.16em;
+	--qc-cta-radius: 2px;
 }
 
 .qc-home[data-preview-theme='atlas'] .qc-display-1,
 .qc-home[data-preview-theme='atlas'] .qc-heading-2,
 .qc-home[data-preview-theme='atlas'] .qc-heading-3 {
-	letter-spacing: -0.01em;
 	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+}
+
+.qc-home[data-preview-theme='atlas'] .qc-data {
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.01em;
+}
+
+/* ---------------------------------------------------------------------------
+ * Shared consumption of the expression tokens.
+ *
+ * These read tokens rather than hard-coding per-theme values, so a direction is
+ * expressed once in its block above. Defaults keep production (no attribute)
+ * exactly as it was.
+ * ------------------------------------------------------------------------ */
+.qc-home {
+	--qc-section-y: var(--qc-space-7);
+	--qc-rule-weight: 1px;
+	--qc-row-gap: var(--qc-space-4);
+	--qc-display-tracking: -0.025em;
+	--qc-eyebrow-tracking: 0.1em;
+	--qc-cta-radius: 8px;
+}
+
+.qc-home .qc-section {
+	padding-block: var(--qc-section-y);
+}
+
+.qc-home .qc-label {
+	letter-spacing: var(--qc-eyebrow-tracking);
+}
+
+.qc-home .qc-display-1 {
+	letter-spacing: var(--qc-display-tracking);
+}
+
+.qc-home .qc-cta {
+	border-radius: var(--qc-cta-radius);
+}
+
+.qc-home .qc-card,
+.qc-home .qc-panel {
+	border-radius: var(--qc-radius);
+	border-width: var(--qc-rule-weight);
 }

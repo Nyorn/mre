@@ -19,7 +19,7 @@
 	 * No analytics event is emitted, and no data or media is re-fetched: a switch
 	 * changes CSS custom properties and one text bundle.
 	 */
-	import { createEventDispatcher, onMount, tick } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy, tick } from 'svelte';
 	import { replaceState } from '$app/navigation';
 	import {
 		PREVIEW_STORAGE_KEY,
@@ -133,18 +133,52 @@
 		).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
 	}
 
+	/*
+	 * Background inertness while the dialog is open.
+	 *
+	 * `inert` removes the subtree from both the focus order and the
+	 * accessibility tree; aria-hidden covers engines without inert support.
+	 * Without this a screen reader reads the whole home page "through" the
+	 * dialog, which is exactly what makes a modal useless with assistive tech.
+	 * The bar itself is excluded so the trigger keeps its accessible name.
+	 */
+	function backgroundNodes() {
+		if (typeof document === 'undefined') return [];
+		return Array.from(document.querySelectorAll('.qc-home > *')).filter(
+			(el) => !el.classList.contains('comparer-slot') && !el.contains(dialogEl)
+		);
+	}
+
+	function setBackgroundInert(on) {
+		for (const el of backgroundNodes()) {
+			if (on) {
+				el.setAttribute('inert', '');
+				el.setAttribute('aria-hidden', 'true');
+			} else {
+				el.removeAttribute('inert');
+				el.removeAttribute('aria-hidden');
+			}
+		}
+	}
+
 	async function openDialog() {
 		triggerEl = document.activeElement;
 		open = true;
 		await tick();
+		setBackgroundInert(true);
 		focusable()[0]?.focus();
 	}
 
 	function closeDialog() {
 		open = false;
+		setBackgroundInert(false);
 		// Focus returns to the control that opened the dialog, not to the top.
 		triggerEl?.focus?.();
 	}
+
+	onDestroy(() => {
+		if (typeof document !== 'undefined') setBackgroundInert(false);
+	});
 
 	function onKeydown(event) {
 		if (event.key === 'Escape') {

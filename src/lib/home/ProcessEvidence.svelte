@@ -1,17 +1,22 @@
 <script>
 	/*
-	 * "Как мы работаем" — the target of the hero's secondary CTA (#process), and
-	 * the evidence block product-flow-delta.v1 §4 requires between the scenario
-	 * entry and the enquiry.
+	 * "Как мы работаем" — target of the hero's secondary CTA (#process), and the
+	 * evidence block product-flow-delta.v1 §4 requires between the scenario entry
+	 * and the enquiry.
 	 *
-	 * Claims discipline: every step describes what WE do, never what the market,
-	 * a price or a legal status does. No response-time promise appears here —
-	 * there is no measured SLA to publish, and inventing one would be the same
-	 * class of error as a yield claim.
+	 * Ordered rows, not a four-across card grid: these steps happen in sequence,
+	 * and a symmetric grid says "four parallel features" while hiding the order
+	 * at every breakpoint below 1024. A numbered list with rules says what it is.
 	 *
-	 * The second panel is the honest counterpart: it states in plain terms what
-	 * this site cannot confirm yet. That is the "explicit uncertainty" branch of
-	 * the proof-first rule, not a disclaimer bolted on at the end.
+	 * CLAIMS (Bob's review, applied):
+	 *  - "проверяем" → "уточняем" throughout. We request status and costs from
+	 *    the owner or partner; we do not independently verify them, and the
+	 *    stronger verb claimed that we do.
+	 *  - The evidence panel no longer promises a published source or a checked
+	 *    date. Neither field exists in the content model yet, so promising them
+	 *    would be a claim about a capability we do not have. It states what is
+	 *    true now: some data is available, some is not, and we say which.
+	 *  - No response-time promise anywhere: there is no measured SLA to publish.
 	 */
 	const steps = [
 		{
@@ -23,7 +28,7 @@
 			body: 'Собираем варианты под задачу и объясняем, чем они отличаются и в чём компромисс.'
 		},
 		{
-			title: 'Проверяем документы и расходы',
+			title: 'Уточняем документы и расходы',
 			body: 'Запрашиваем статус объекта и состав ежегодных расходов у собственника или партнёра.'
 		},
 		{
@@ -38,12 +43,14 @@
 		<p class="qc-label">Процесс</p>
 		<h2 id="process-heading" class="qc-heading-2 heading">Как мы работаем</h2>
 
-		<ol class="steps">
+		<ol class="step-rows">
 			{#each steps as step, i}
-				<li class="qc-card step">
-					<span class="qc-data step-index" aria-hidden="true">{i + 1}</span>
-					<h3 class="qc-heading-3 step-title">{step.title}</h3>
-					<p class="qc-body step-body">{step.body}</p>
+				<li class="step-row">
+					<span class="step-index qc-data" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+					<div class="step-text">
+						<h3 class="qc-heading-3 step-title">{step.title}</h3>
+						<p class="qc-body step-body">{step.body}</p>
+					</div>
 				</li>
 			{/each}
 		</ol>
@@ -52,8 +59,7 @@
 			<h3 class="qc-heading-3 evidence-title">Что мы показываем и чего пока не показываем</h3>
 			<ul class="evidence-list qc-body">
 				<li>
-					Цену, статус и расположение публикуем со ссылкой на источник и датой проверки —
-					там, где источник есть.
+					Показываем те данные об объекте, которые у нас есть от собственника или партнёра.
 				</li>
 				<li>
 					Где данных нет или они устарели, мы пишем это прямо, а не подставляем
@@ -61,7 +67,7 @@
 				</li>
 				<li>
 					Доходность, окупаемость и основания для ВНЖ мы не обещаем: это предмет отдельной
-					проверки под конкретный объект и конкретного покупателя.
+					работы под конкретный объект и конкретного покупателя.
 				</li>
 			</ul>
 		</div>
@@ -71,7 +77,7 @@
 <style>
 	.process {
 		background: var(--qc-surface);
-		border-bottom: 1px solid var(--qc-border);
+		border-bottom: var(--qc-rule-weight, 1px) solid var(--qc-border);
 	}
 
 	.heading {
@@ -79,38 +85,42 @@
 		text-align: left;
 	}
 
-	.steps {
+	.step-rows {
 		list-style: none;
 		margin: var(--qc-space-6) 0 0;
 		padding: 0;
-		display: grid;
-		gap: var(--qc-space-4);
-		grid-template-columns: 1fr;
-		counter-reset: none;
+		border-top: var(--qc-rule-weight, 1px) solid var(--qc-border);
 	}
 
-	.step {
-		/* min-width:0 keeps a long word from widening the grid track. */
+	.step-row {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--qc-space-4);
+		padding: var(--qc-space-5) 0;
+		border-bottom: var(--qc-rule-weight, 1px) solid var(--qc-border);
 		min-width: 0;
 	}
 
 	.step-index {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 28px;
-		height: 28px;
-		border-radius: 999px;
-		background: var(--qc-sea-soft);
-		color: var(--qc-ink-950);
+		flex: 0 0 auto;
+		color: var(--qc-muted);
+		font-variant-numeric: tabular-nums;
+		/* Aligns with the cap height of the row title. */
+		padding-top: 4px;
+		min-width: 2.5ch;
+	}
+
+	.step-text {
+		min-width: 0;
 	}
 
 	.step-title {
-		margin: var(--qc-space-3) 0 0;
+		margin: 0;
 	}
 
 	.step-body {
 		margin: var(--qc-space-2) 0 0;
+		max-width: 68ch;
 	}
 
 	.evidence {
@@ -126,21 +136,18 @@
 		padding-left: 1.25em;
 		display: grid;
 		gap: var(--qc-space-2);
-		max-width: 76ch;
+		max-width: 72ch;
 		/* Panel background is --qc-surface-subtle: body text stays Ink 700. */
 		color: var(--qc-ink-700);
 	}
 
 	@media (min-width: 768px) {
-		.steps {
-			grid-template-columns: repeat(2, 1fr);
-			gap: var(--qc-space-5);
+		.step-row {
+			gap: var(--qc-space-6);
 		}
-	}
 
-	@media (min-width: 1024px) {
-		.steps {
-			grid-template-columns: repeat(4, 1fr);
+		.step-index {
+			min-width: 4ch;
 		}
 	}
 </style>

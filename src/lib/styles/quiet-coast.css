@@ -212,13 +212,35 @@
 	transition: background-color 120ms ease, color 120ms ease;
 }
 
-.qc-cta-primary {
+/*
+ * CASCADE: these are doubled up (.qc-cta.qc-cta-primary, 0-2-0) on purpose.
+ *
+ * Tailwind's preflight emits
+ *   button, [type="button"], [type="reset"], [type="submit"] {
+ *     background-color: transparent; background-image: none;
+ *   }
+ * The `[type="button"]` branch of that selector list is specificity 0-1-0 —
+ * exactly equal to a single `.qc-cta-primary` — and `tailwindcss/base` is
+ * imported after this file in global.css, so on a tie the later rule won.
+ *
+ * Every CTA here is a <button type="button">, so every one of them rendered
+ * with a transparent background and white text: a measured contrast of 1.02:1.
+ * An <a class="qc-cta-primary"> matched neither branch and painted correctly,
+ * which is why this looked like it only affected some CTAs.
+ *
+ * Raising to 0-2-0 fixes it independently of import order, which is the point:
+ * reordering global.css would fix this tie today and break silently the next
+ * time someone touches the imports.
+ */
+.qc-cta.qc-cta-primary {
 	background: var(--qc-sea-700);
 	color: #ffffff;
+	border-color: var(--qc-sea-700);
 }
 
-.qc-cta-primary:hover {
+.qc-cta.qc-cta-primary:hover {
 	background: var(--qc-sea-800);
+	border-color: var(--qc-sea-800);
 }
 
 /* Detail primary is 50px per brand-delta §2.4 */
@@ -227,24 +249,25 @@
 	width: 100%;
 }
 
-.qc-cta-secondary {
-	background: transparent;
+/* Same 0-2-0 doubling; see the note above .qc-cta.qc-cta-primary. */
+.qc-cta.qc-cta-secondary {
+	background: var(--qc-surface);
 	color: var(--qc-sea-700);
 	border-color: var(--qc-border-strong);
 }
 
-.qc-cta-secondary:hover {
+.qc-cta.qc-cta-secondary:hover {
 	background: var(--qc-sea-soft);
 }
 
 /* Neutral tone for requests about data we cannot confirm — no urgency */
-.qc-cta-neutral {
+.qc-cta.qc-cta-neutral {
 	background: var(--qc-surface-subtle);
 	color: var(--qc-ink-950);
-	border-color: var(--qc-border);
+	border-color: var(--qc-border-strong);
 }
 
-.qc-cta-neutral:hover {
+.qc-cta.qc-cta-neutral:hover {
 	background: var(--qc-sea-soft);
 }
 

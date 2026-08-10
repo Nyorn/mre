@@ -17,38 +17,60 @@
 	 * Landmarks: this page owns its own header/main/footer. +layout.svelte hands
 	 * the home route the bare slot precisely so the skip link can be the first
 	 * focusable element and there is exactly one <main>.
+	 *
+	 * BUNDLE: the comparer is imported dynamically and only after mount, so a
+	 * production build never fetches its chunk. SSR and the first client render
+	 * both emit an empty reserved slot, which is why this does not produce a
+	 * hydration mismatch — the two renders agree, and the bar fills a slot whose
+	 * height was already reserved, so nothing moves. The hero copy comes from the
+	 * server payload rather than a client import, keeping the other two copy
+	 * bundles out of the browser entirely.
 	 */
+	import { onMount } from 'svelte';
 	import ScenarioEntry from '$lib/ScenarioEntry.svelte';
 	import QuietCoastHeader from '$lib/home/QuietCoastHeader.svelte';
 	import HomeHero from '$lib/home/HomeHero.svelte';
 	import ProcessEvidence from '$lib/home/ProcessEvidence.svelte';
 	import EnquirySection from '$lib/home/EnquirySection.svelte';
 	import QuietCoastFooter from '$lib/home/QuietCoastFooter.svelte';
-	import PreviewComparer from '$lib/PreviewComparer.svelte';
-	import { HERO_COPY } from '$lib/home-copy.js';
+	import { openEnquiry, INTENT } from '$lib/enquiry.js';
 	import { DEFAULT_THEME, DEFAULT_COPY } from '$lib/preview-comparer.js';
 	import '$lib/styles/home-themes.css';
 
 	export let data;
 
 	$: previewEnabled = data?.previewComparer === true;
-	$: variant = data?.variant ?? { theme: DEFAULT_THEME, copy: DEFAULT_COPY };
+	$: serverVariant = data?.variant ?? { theme: DEFAULT_THEME, copy: DEFAULT_COPY };
 
 	/*
-	 * Production is pinned, not merely defaulted: even if a variant somehow
-	 * arrived in the payload, a non-preview render uses quiet/scenario.
+	 * Production is pinned, not merely defaulted: a non-preview render uses
+	 * quiet/scenario regardless of what arrived in the payload.
 	 */
 	let theme = DEFAULT_THEME;
 	let copy = DEFAULT_COPY;
 
-	$: theme = previewEnabled ? variant.theme : DEFAULT_THEME;
-	$: copy = previewEnabled ? variant.copy : DEFAULT_COPY;
+	$: theme = previewEnabled ? serverVariant.theme : DEFAULT_THEME;
+	$: copy = previewEnabled ? serverVariant.copy : DEFAULT_COPY;
 
-	$: heroCopy = HERO_COPY[copy] ?? HERO_COPY[DEFAULT_COPY];
+	/* Server sends the resolved bundle; the table only exists in a preview. */
+	$: heroCopy =
+		(previewEnabled && data?.heroCopyTable?.[copy]) || data?.heroCopy || { eyebrow: '', h1: '', lead: '' };
+
+	let PreviewComparerComponent = null;
+
+	onMount(async () => {
+		if (!previewEnabled) return;
+		const module = await import('$lib/PreviewComparer.svelte');
+		PreviewComparerComponent = module.default;
+	});
 
 	function onVariantChange(event) {
 		theme = event.detail.theme;
 		copy = event.detail.copy;
+	}
+
+	function openHeroEnquiry() {
+		openEnquiry({ intent: INTENT.SELECTION, scenario: data?.heroScenario || '' });
 	}
 
 	const PRODUCTION_HOME = 'https://sea-estate.com/';
@@ -71,19 +93,31 @@
 
 <div class="qc-home" data-preview-theme={previewEnabled ? theme : null}>
 	{#if previewEnabled}
-		<PreviewComparer
-			theme={variant.theme}
-			copy={variant.copy}
-			themeSource={variant.themeSource}
-			copySource={variant.copySource}
-			on:change={onVariantChange}
-		/>
+		<!-- Height reserved so the late-mounted bar cannot shift the page. -->
+		<div class="comparer-slot">
+			{#if PreviewComparerComponent}
+				<svelte:component
+					this={PreviewComparerComponent}
+					theme={serverVariant.theme}
+					copy={serverVariant.copy}
+					themeSource={serverVariant.themeSource}
+					copySource={serverVariant.copySource}
+					on:change={onVariantChange}
+				/>
+			{/if}
+		</div>
 	{/if}
 
 	<QuietCoastHeader />
 
 	<main id="main">
-		<HomeHero copy={heroCopy} reserveHeight={previewEnabled} />
+		<HomeHero
+			copy={heroCopy}
+			ctaPrimary={data?.heroCta?.primary}
+			ctaSecondary={data?.heroCta?.secondary}
+			onPrimary={openHeroEnquiry}
+			reserveHeight={previewEnabled}
+		/>
 		<ScenarioEntry />
 		<ProcessEvidence />
 		<EnquirySection />
@@ -98,6 +132,12 @@
 	 * radial gradients on <body> (secondary + error hues) with
 	 * background-attachment: fixed. Rather than editing a global that every
 	 * other route still depends on, home covers it with its own surface.
+	 *
+	 * No overflow-x: hidden here. That was masking real horizontal overflow
+	 * instead of fixing it — the page still scrolled sideways on some elements,
+	 * the mask just hid the scrollbar. Overflow is now prevented at the source
+	 * (min-width: 0 on flex/grid children, wrapping long words), and the QA
+	 * script asserts scrollWidth === clientWidth at 320px.
 	 */
 	.qc-home {
 		position: relative;
@@ -105,8 +145,20 @@
 		background: var(--qc-surface);
 		font-family: var(--qc-font-ui);
 		color: var(--qc-ink-700);
-		/* Nothing inside home may push a horizontal scrollbar. */
-		overflow-x: hidden;
+	}
+
+	/*
+	 * Matches the rendered height of the comparer bar at each breakpoint, so the
+	 * dynamically imported component drops into space that already exists.
+	 */
+	.comparer-slot {
+		min-height: 96px;
+	}
+
+	@media (min-width: 768px) {
+		.comparer-slot {
+			min-height: 60px;
+		}
 	}
 
 	.qc-home :global(main) {
@@ -115,8 +167,11 @@
 
 	.qc-skip-link {
 		position: absolute;
-		left: -9999px;
+		/* Off-canvas without widening the page: left:-9999px would create real
+		   horizontal overflow measurable at 320px. */
+		left: 0;
 		top: 0;
+		transform: translateY(-200%);
 		z-index: 1300;
 		padding: 12px 16px;
 		background: var(--qc-surface);
@@ -129,6 +184,12 @@
 	}
 
 	.qc-skip-link:focus {
-		left: 0;
+		transform: translateY(0);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.qc-skip-link {
+			transition: none;
+		}
 	}
 </style>
