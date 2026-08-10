@@ -399,9 +399,6 @@
         cursor: default;
     }
 
-    .submit-button:hover {
-        background-color: #0056b3; /* Темно-синий при наведении */
-    }
     @media (max-width: 600px) {
         .feedback-form {
             max-width: 100%; /* Ширина на маленьких экранах */
