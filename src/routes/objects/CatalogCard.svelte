@@ -15,6 +15,7 @@
 	 * one link. Presentation rules live in catalog-format.js and are unit-tested,
 	 * because that is where a page starts telling small lies.
 	 */
+	import { onMount } from 'svelte';
 	import {
 		formatPrice,
 		buildFacts,
@@ -46,14 +47,38 @@
 	 * it never did. The inline `onerror` attribute below is parsed with the
 	 * markup and fires immediately: it flags the wrapper, and CSS swaps in the
 	 * placeholder that is already in the DOM. No JavaScript of ours needs to
-	 * have run. The Svelte handler is kept as well for images that fail later.
+	 * have run.
 	 */
 	const ON_ERROR = "this.closest('.media')?.classList.add('media-failed')";
+
+	let mediaEl;
+	let failed = false;
+
+	function markFailed() {
+		failed = true;
+		mediaEl?.classList.add('media-failed');
+	}
+
+	/*
+	 * The error EVENT is not enough on its own.
+	 *
+	 * Three cases fire no error for us to hear: a warm cache where the image
+	 * already failed and the browser replays the failure before our listener
+	 * exists; a back/forward restore, where the element is reinstated in its
+	 * final state; and hydration itself, which happens after the inline handler
+	 * may already have run and been discarded. In all of them `complete` is true
+	 * while `naturalWidth` is 0 — the canonical "decoded nothing" signal — so we
+	 * check it once on mount as well as listening.
+	 */
+	onMount(() => {
+		const img = mediaEl?.querySelector('img');
+		if (img && img.complete && img.naturalWidth === 0) markFailed();
+	});
 </script>
 
 <li class="card-item">
 	<article class="qc-card card">
-		<div class="media" class:media-empty={!photo}>
+		<div class="media" class:media-empty={!photo} class:media-failed={failed} bind:this={mediaEl}>
 			{#if photo}
 				<img
 					class="photo"
@@ -65,7 +90,7 @@
 					width="800"
 					height="600"
 					onerror={ON_ERROR}
-					on:error={(e) => e.currentTarget.closest('.media')?.classList.add('media-failed')}
+					on:error={markFailed}
 				/>
 			{/if}
 			<!--
@@ -73,9 +98,22 @@
 			  it when a photo is present and shows it the moment the wrapper is
 			  flagged, or immediately when there is no photo at all.
 			-->
-			<div class="placeholder" role="img" aria-label="Фотография объекта пока не добавлена">
-				<span class="qc-caption placeholder-text">Фото пока нет</span>
-			</div>
+			<!--
+			  Two different facts, two different messages. "No photo" is a statement
+			  about the CMS record; "could not load" is a statement about this
+			  request. Showing the first when an image actually failed would tell
+			  the visitor the listing has no photo, which is not true.
+			  Both occupy the same 4:3 box, so neither causes a shift.
+			-->
+			{#if photo}
+				<div class="placeholder failed-note" role="img" aria-label="Не удалось загрузить фотографию объекта">
+					<span class="qc-caption placeholder-text">Не удалось загрузить фото</span>
+				</div>
+			{:else}
+				<div class="placeholder" role="img" aria-label="Фотография объекта пока не добавлена">
+					<span class="qc-caption placeholder-text">Фото пока нет</span>
+				</div>
+			{/if}
 		</div>
 
 		<div class="body">

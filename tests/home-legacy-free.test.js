@@ -282,9 +282,16 @@ test('the enquiry modal forwards the full context', () => {
 	}
 });
 
-test('the preview comparer is not reachable from any other route', () => {
-	// Only home may render it; a stray import elsewhere would put the switcher
-	// on a page whose server load never evaluated the gate.
+test('the preview comparer switcher is not reachable from any other route', () => {
+	/*
+	 * Only home may render the SWITCHER; a stray import elsewhere would put it on
+	 * a page whose server load never evaluated the gate.
+	 *
+	 * The theme BUNDLES are a different matter and are deliberately shared: the
+	 * catalog imports home-themes.css so the preview_theme carried across its
+	 * links selects real tokens instead of nothing. Those rules are inert without
+	 * the attribute, which only a gated server load ever emits.
+	 */
 	const routesDir = path.join(srcDir, 'routes');
 	const otherEntries = [
 		'about/+page.svelte',
@@ -300,7 +307,7 @@ test('the preview comparer is not reachable from any other route', () => {
 		if (!existsSync(file)) continue;
 		const source = readFileSync(file, 'utf8');
 		assert.equal(
-			/PreviewComparer|preview-comparer|home-themes\.css/.test(source),
+			/PreviewComparer/.test(source),
 			false,
 			`${rel} references the preview comparer`
 		);

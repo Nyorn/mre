@@ -153,3 +153,66 @@ export function describeCount(shown, total) {
 	if (shown === total) return { state: 'all', text: `Объектов: ${total}` };
 	return { state: 'filtered', text: `Показано ${shown} из ${total}` };
 }
+
+/* ------------------------------------------------------------------ sort --- */
+
+/** Sortable numeric value, or null when the field is not a usable number. */
+function sortableNumber(value) {
+	const n = typeof value === 'string' ? Number(value) : value;
+	return typeof n === 'number' && Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Price is sortable only when it is a real price. A CMS zero means "not
+ * published", not "free", so it must not sort to the top of "cheapest first" —
+ * which is exactly what `a.price - b.price` did.
+ */
+function sortablePrice(value) {
+	return hasPrice(value) ? Number(value) : null;
+}
+
+export const SORT_KEYS = ['price', 'area', 'floor'];
+
+/**
+ * Order the catalog.
+ *
+ * Rules, all of them deliberate:
+ *
+ *  - No sort selected -> the CMS order, unchanged. The array is copied but not
+ *    sorted at all, so "Без сортировки" is deterministic rather than "whatever
+ *    a comparator returning 0 happens to do".
+ *  - Unknown values sort LAST in both directions. An object with no price is
+ *    not the cheapest and not the most expensive; putting it at the end in
+ *    either direction is the only honest position. The old comparator produced
+ *    NaN for these and left the order arbitrary.
+ *  - Ties fall through to the next selected key, then to the CMS order, which
+ *    Array.prototype.sort preserves (stable since ES2019).
+ *
+ * @param {Array<object>} items
+ * @param {{price?: 'asc'|'desc', area?: 'asc'|'desc', floor?: 'asc'|'desc'}} sortOptions
+ */
+export function sortObjects(items, sortOptions = {}) {
+	const list = Array.isArray(items) ? [...items] : [];
+
+	const active = SORT_KEYS.filter(
+		(key) => sortOptions?.[key] === 'asc' || sortOptions?.[key] === 'desc'
+	);
+	if (active.length === 0) return list;
+
+	const valueOf = (object, key) =>
+		key === 'price' ? sortablePrice(object?.price) : sortableNumber(object?.[key]);
+
+	return list.sort((a, b) => {
+		for (const key of active) {
+			const av = valueOf(a, key);
+			const bv = valueOf(b, key);
+
+			if (av === null && bv === null) continue; // both unknown: next key
+			if (av === null) return 1; // unknown goes last, regardless of direction
+			if (bv === null) return -1;
+
+			if (av !== bv) return (av - bv) * (sortOptions[key] === 'asc' ? 1 : -1);
+		}
+		return 0; // stable: CMS order survives
+	});
+}

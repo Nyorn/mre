@@ -10,6 +10,8 @@ import {
 	hasPhoto,
 	withPreviewQuery,
 	describeCount,
+	sortObjects,
+	SORT_KEYS,
 	PRESERVED_QUERY_KEYS
 } from '../src/lib/catalog-format.js';
 
@@ -196,4 +198,73 @@ test('a filtered count says how many of how many', () => {
 
 test('an unfiltered count states the total once', () => {
 	assert.deepEqual(describeCount(24, 24), { state: 'all', text: 'Объектов: 24' });
+});
+
+/* ------------------------------------------------------------------- sort - */
+
+const ITEMS = [
+	{ slug: 'a', price: 250000, area: 140, floor: 1 },
+	{ slug: 'b', price: 85000, area: 62, floor: 3 },
+	{ slug: 'c', price: 0, area: null, floor: null }, // nothing sortable
+	{ slug: 'd', price: 120000, area: 62, floor: 2 }
+];
+const order = (opts) => sortObjects(ITEMS, opts).map((x) => x.slug);
+
+test('the three sortable keys are the ones the UI offers', () => {
+	assert.deepEqual(SORT_KEYS, ['price', 'area', 'floor']);
+});
+
+test('no sort selected keeps the CMS order exactly', () => {
+	// "Без сортировки" must be deterministic, not "whatever a 0-comparator does".
+	assert.deepEqual(order({}), ['a', 'b', 'c', 'd']);
+	assert.deepEqual(order(undefined), ['a', 'b', 'c', 'd']);
+	assert.deepEqual(order({ price: 'sideways' }), ['a', 'b', 'c', 'd']);
+});
+
+test('sorting does not mutate the input', () => {
+	const before = ITEMS.map((x) => x.slug);
+	sortObjects(ITEMS, { price: 'asc' });
+	assert.deepEqual(ITEMS.map((x) => x.slug), before);
+});
+
+test('cheapest first puts real prices in order', () => {
+	assert.deepEqual(order({ price: 'asc' }).slice(0, 3), ['b', 'd', 'a']);
+});
+
+test('an unknown price is never the cheapest', () => {
+	/*
+	 * The specific defect: `a.price - b.price` treated a CMS zero as 0 €, so an
+	 * unpublished price sorted to the very top of "cheapest first".
+	 */
+	assert.equal(order({ price: 'asc' })[0], 'b');
+	assert.equal(order({ price: 'asc' }).at(-1), 'c');
+});
+
+test('an unknown price is never the most expensive either', () => {
+	assert.equal(order({ price: 'desc' })[0], 'a');
+	assert.equal(order({ price: 'desc' }).at(-1), 'c', 'unknown sorts last in BOTH directions');
+});
+
+test('unknown area and floor also sort last in both directions', () => {
+	assert.equal(order({ area: 'asc' }).at(-1), 'c');
+	assert.equal(order({ area: 'desc' }).at(-1), 'c');
+	assert.equal(order({ floor: 'asc' }).at(-1), 'c');
+	assert.equal(order({ floor: 'desc' }).at(-1), 'c');
+});
+
+test('a tie falls through to the next key, then to CMS order', () => {
+	// b and d share area 62; floor then decides, ascending.
+	assert.deepEqual(order({ area: 'asc', floor: 'asc' }).slice(0, 2), ['d', 'b']);
+	// With no tiebreaker the CMS order survives (stable sort).
+	assert.deepEqual(order({ area: 'asc' }).slice(0, 2), ['b', 'd']);
+});
+
+test('numeric strings from the CMS sort as numbers, not as text', () => {
+	const items = [{ slug: 'x', price: '900' }, { slug: 'y', price: '1000' }];
+	assert.deepEqual(sortObjects(items, { price: 'asc' }).map((i) => i.slug), ['x', 'y']);
+});
+
+test('a non-array input yields an empty list rather than throwing', () => {
+	assert.deepEqual(sortObjects(undefined, { price: 'asc' }), []);
+	assert.deepEqual(sortObjects(null), []);
 });

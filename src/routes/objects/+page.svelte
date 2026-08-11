@@ -28,9 +28,16 @@
   import QuietCoastHeader from '$lib/home/QuietCoastHeader.svelte';
   import QuietCoastFooter from '$lib/home/QuietCoastFooter.svelte';
   import { openEnquiry, INTENT } from '$lib/enquiry.js';
-  import { describeCount } from '$lib/catalog-format.js';
+  import { describeCount, sortObjects } from '$lib/catalog-format.js';
   import { page } from '$app/stores';
   import '$lib/styles/quiet-shell.css';
+  /*
+   * The theme bundles themselves. The catalog root already carried
+   * data-preview-theme, but without these rules loaded on this route the
+   * attribute selected nothing: all three directions rendered identical Quiet
+   * Coast tokens. Importing them here is what makes the carried query real.
+   */
+  import '$lib/styles/home-themes.css';
 
   export let data;
 
@@ -51,7 +58,14 @@
 
   /* ---- existing filter/sort semantics, carried over verbatim ---- */
 
-  function handleFilter(event, sortOptions = {}) {
+  /*
+   * `activeSort` is a parameter only so handleSort can pass a fresh value in the
+   * same tick. It used to be named `sortOptions`, which SHADOWED the module
+   * state of the same name: every call from the filter bar or the full-filter
+   * dialog passed no second argument, so the default {} silently discarded the
+   * visitor's sort choice and the list snapped back to CMS order.
+   */
+  function handleFilter(event, activeSort = sortOptions) {
     lastFilterOptions = event ? event.detail : lastFilterOptions;
     const { city, price, type, bedrooms, elevator, area, bathrooms, pool, parking, fromBuilder, minPrice, maxPrice, minArea, maxArea, minFloor, maxFloorValue, heat, security, conserj, video, fitness, restoraunts, playground, tv, internet } = event.detail;
 
@@ -105,31 +119,8 @@
         matchesInternet;
     });
 
-    applySorting(sortOptions);
-  }
-
-  function applySorting(sortOptions) {
-    filteredData = [...filteredData].sort((a, b) => {
-      let result = 0;
-
-      if (sortOptions.price) {
-        result = sortOptions.price === 'asc' ? a.price - b.price : b.price - a.price;
-        if (result !== 0) return result;
-      }
-      if (sortOptions.area) {
-        let areaA = parseFloat(a.area);
-        let areaB = parseFloat(b.area);
-        result = sortOptions.area === 'asc' ? areaA - areaB : areaB - areaA;
-        if (result !== 0) return result;
-      }
-      if (sortOptions.floor) {
-        let floorA = parseFloat(a.floor);
-        let floorB = parseFloat(b.floor);
-        result = sortOptions.floor === 'asc' ? floorA - floorB : floorB - floorA;
-      }
-
-      return result;
-    });
+    // Ordering rules live in catalog-format.js and are unit-tested there.
+    filteredData = sortObjects(filteredData, activeSort);
   }
 
   function openFullFilters(event) {
@@ -147,10 +138,14 @@
     handleFilter({ detail: lastFilterOptions }, sortOptions);
   }
 
+  /*
+   * Reset clears the FILTERS. The sort is a separate choice the visitor made and
+   * is deliberately preserved — and re-applied, so the order on screen matches
+   * the control that is still showing it.
+   */
   function resetFilters() {
     lastFilterOptions = {};
-    sortOptions = {};
-    filteredData = data.objects || [];
+    filteredData = sortObjects(data.objects || [], sortOptions);
   }
 </script>
 
@@ -282,6 +277,7 @@
 <CatalogFilterDialog
   bind:open={showFullFilters}
   opener={fullFiltersOpener}
+  theme={previewTheme}
   on:full-filter={handleFullFilter}
 />
 

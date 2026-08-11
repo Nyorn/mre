@@ -22,6 +22,16 @@
 	export let open = false;
 	/** Focus returns here on close. */
 	export let opener = null;
+	/*
+	 * Active preview theme, or null in production.
+	 *
+	 * This dialog mounts OUTSIDE .qc-home so it can inert the page, which also
+	 * puts it outside the element carrying data-preview-theme — so it would have
+	 * rendered Quiet Coast while the page behind it rendered Mediterranean or
+	 * Atlas. The theme rules key off the attribute, not off the wrapper, so
+	 * mirroring it here is enough for the whole dialog to follow.
+	 */
+	export let theme = null;
 
 	let dialogEl;
 	let wasOpen = false;
@@ -181,8 +191,28 @@
 
 	async function onOpened() {
 		await tick();
+		/*
+		 * Re-check after the await. `open` can be flipped back to false by the
+		 * parent (or by a fast Escape) while we were waiting a tick, and applying
+		 * inert then would leave the page permanently unreachable with no dialog
+		 * on screen to close.
+		 */
+		if (!open) {
+			setBackgroundInert(false);
+			return;
+		}
 		setBackgroundInert(true);
 		focusable()[0]?.focus();
+	}
+
+	/*
+	 * External close. The parent owns `open` through bind:, so it can set it to
+	 * false without ever calling close() — on navigation, on a filter applied
+	 * from elsewhere, or in a test. That path must still release inert, or the
+	 * page stays inert forever with nothing visible to blame.
+	 */
+	function onClosedExternally() {
+		setBackgroundInert(false);
 	}
 
 	export function close() {
@@ -199,6 +229,7 @@
 			onOpened();
 		} else if (!open && wasOpen) {
 			wasOpen = false;
+			onClosedExternally();
 		}
 	}
 
@@ -234,10 +265,20 @@
 </script>
 
 {#if open}
+	<!--
+	  svelte-ignore a11y-no-noninteractive-element-interactions
+	  The backdrop is a decorative click target, not a control: it carries
+	  role="presentation" and is deliberately absent from the accessibility tree
+	  and the tab order. Every keyboard path out of this dialog already exists —
+	  Escape, the named Закрыть button, and the trapped Tab cycle — so adding a
+	  key handler here would create a second, unlabelled way to do the same thing
+	  rather than fix a gap.
+	-->
 	<div class="backdrop" role="presentation" on:click={onBackdrop}></div>
 
 	<div
 		class="dialog"
+		data-preview-theme={theme}
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="full-filters-title"
