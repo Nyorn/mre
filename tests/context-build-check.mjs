@@ -151,6 +151,18 @@ async function checkDeployPreview() {
 		'a bare URL still resolves to quiet (storage is never restored)'
 	);
 
+	/*
+	 * The catalog resolves the same variant server-side, so the preview_theme
+	 * carried across catalog links actually applies there. Only a build with
+	 * CONTEXT=deploy-preview can show this: a default build has the gate closed.
+	 */
+	const catalog = await render('/objects?preview_theme=atlas&preview_copy=compare');
+	check(
+		has(catalog.html, 'data-preview-theme="atlas"'),
+		'preview',
+		'the catalog root applies the preview theme'
+	);
+
 	const themed = await render('/?preview_theme=atlas&preview_copy=compare');
 	check(
 		has(themed.html, 'data-preview-theme="atlas"'),
@@ -193,6 +205,13 @@ async function checkProduction() {
 		has(bare.html, 'rel="canonical" href="https://sea-estate.com/"'),
 		'production',
 		'canonical still points at the production home'
+	);
+
+	const craftedCatalog = await render('/objects?preview_theme=atlas&preview_copy=compare');
+	check(
+		!has(craftedCatalog.html, 'data-preview-theme'),
+		'production',
+		'the catalog ignores a crafted preview query'
 	);
 
 	const crafted = await render('/?preview_theme=atlas&preview_copy=compare');

@@ -38,16 +38,23 @@
 	$: href = withPreviewQuery(`/objects/${object?.slug ?? ''}`, search);
 
 	/*
-	 * A broken URL must not collapse the media box. The placeholder occupies the
-	 * same 4:3 slot as a photo, so a failed image never reflows the grid.
+	 * Broken-image fallback that works BEFORE hydration.
+	 *
+	 * Svelte's on:error only binds once the component hydrates, so an image that
+	 * fails during the server-rendered first paint — the common case on a slow
+	 * or blocked CDN — left a broken-image icon until JS arrived, or forever if
+	 * it never did. The inline `onerror` attribute below is parsed with the
+	 * markup and fires immediately: it flags the wrapper, and CSS swaps in the
+	 * placeholder that is already in the DOM. No JavaScript of ours needs to
+	 * have run. The Svelte handler is kept as well for images that fail later.
 	 */
-	let failed = false;
+	const ON_ERROR = "this.closest('.media')?.classList.add('media-failed')";
 </script>
 
 <li class="card-item">
 	<article class="qc-card card">
-		<div class="media">
-			{#if photo && !failed}
+		<div class="media" class:media-empty={!photo}>
+			{#if photo}
 				<img
 					class="photo"
 					src={object.photo.url}
@@ -57,13 +64,18 @@
 					decoding="async"
 					width="800"
 					height="600"
-					on:error={() => (failed = true)}
+					onerror={ON_ERROR}
+					on:error={(e) => e.currentTarget.closest('.media')?.classList.add('media-failed')}
 				/>
-			{:else}
-				<div class="placeholder" role="img" aria-label="Фотография объекта пока не добавлена">
-					<span class="qc-caption placeholder-text">Фото пока нет</span>
-				</div>
 			{/if}
+			<!--
+			  Always in the DOM so the swap needs no JavaScript of ours: CSS hides
+			  it when a photo is present and shows it the moment the wrapper is
+			  flagged, or immediately when there is no photo at all.
+			-->
+			<div class="placeholder" role="img" aria-label="Фотография объекта пока не добавлена">
+				<span class="qc-caption placeholder-text">Фото пока нет</span>
+			</div>
 		</div>
 
 		<div class="body">
@@ -113,10 +125,35 @@
 
 	.media {
 		/* Reserved geometry: identical for a photo, a broken URL and no photo. */
+		position: relative;
 		aspect-ratio: 4 / 3;
 		width: 100%;
 		background: var(--qc-surface-subtle);
 		border-bottom: var(--qc-rule-weight, 1px) solid var(--qc-border);
+		overflow: hidden;
+	}
+
+	/* A photo is present and loading fine: hide the standby placeholder. */
+	.placeholder {
+		display: none;
+	}
+
+	/*
+	 * `media-failed` is added at RUNTIME by the inline onerror, so it never
+	 * appears in the template — and Svelte prunes CSS for selectors it cannot
+	 * see, which silently dropped these two rules and left a broken image
+	 * showing with the placeholder hidden behind it. Wrapping just that token in
+	 * :global() keeps the rules in the output. `media-empty` is in the template
+	 * via class:, so it needs no such treatment.
+	 */
+	.media:global(.media-failed) .placeholder,
+	.media-empty .placeholder {
+		display: flex;
+	}
+
+	/* The failed image is removed from the box entirely, not left broken. */
+	.media:global(.media-failed) .photo {
+		display: none;
 	}
 
 	.photo {
@@ -127,9 +164,10 @@
 	}
 
 	.placeholder {
+		position: absolute;
+		inset: 0;
 		width: 100%;
 		height: 100%;
-		display: flex;
 		align-items: center;
 		justify-content: center;
 		background: var(--qc-surface-subtle);

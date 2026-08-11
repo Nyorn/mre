@@ -15,6 +15,16 @@
 	 * /contacts). The phone number is the one already published in the shared
 	 * Footer, so it is not a new claim.
 	 */
+	import { page } from '$app/stores';
+
+	/*
+	 * aria-current="page" marks the section a visitor is in, including its
+	 * descendants: an object detail page is still "Каталог", so /objects/<slug>
+	 * marks the catalog link rather than leaving the header unanchored.
+	 */
+	$: currentPath = $page.url?.pathname ?? '';
+	const isActive = (href, path) => path === href || path.startsWith(`${href}/`);
+
 	const links = [
 		{ href: '/objects', label: 'Каталог' },
 		{ href: '/about', label: 'О компании' },
@@ -32,7 +42,16 @@
 		<nav aria-label="Основная навигация">
 			<ul class="nav-list">
 				{#each links as link}
-					<li><a class="nav-link" href={link.href}>{link.label}</a></li>
+					<li>
+						<a
+							class="nav-link"
+							class:current={isActive(link.href, currentPath)}
+							href={link.href}
+							aria-current={isActive(link.href, currentPath) ? 'page' : undefined}
+						>
+							{link.label}
+						</a>
+					</li>
 				{/each}
 			</ul>
 		</nav>
@@ -99,6 +118,12 @@
 		font-weight: 500;
 		color: var(--qc-ink-700);
 		text-decoration: none;
+	}
+
+	.nav-link.current {
+		color: var(--qc-ink-950);
+		font-weight: 600;
+		box-shadow: inset 0 -2px 0 var(--qc-sea-700);
 	}
 
 	.nav-link:hover {

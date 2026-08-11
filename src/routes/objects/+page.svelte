@@ -2,24 +2,27 @@
   /*
    * Catalog — Quiet Coast shell (Slice 1).
    *
-   * The filter and sort logic below is carried over UNCHANGED on purpose. It is
-   * the one part of this page that is load-bearing for real data, and this slice
-   * is a shell/presentation change: rewriting the predicate chain at the same
-   * time would make any regression impossible to attribute. FilterBar,
-   * FullFilterModal and SortModal are the existing components with the existing
-   * events; only their surrounding surface is restyled, from this page's scope,
-   * without touching their markup or logic.
+   * The filter and sort PREDICATES below are carried over UNCHANGED on purpose.
+   * They are the load-bearing part for real data, and rewriting them while the
+   * shell changes would make any regression impossible to attribute.
    *
-   * What did change: the page owns a Quiet Coast shell like /, /contacts and
-   * /about; cards are semantic list items with reserved media geometry; result
-   * count, empty-filter, empty-catalog and CMS-outage states are distinct and
-   * honest; and internal links carry the preview variant forward.
+   * The filter CONTROLS were replaced after Cypress's review: the legacy
+   * FilterBar/FullFilterModal/SortModal had placeholder-only labels, icon-only
+   * buttons with no accessible name below 920px, dropdowns without
+   * aria-expanded/controls, sub-44px targets and a dark surface. The
+   * replacements in $lib/catalog emit byte-identical event payloads, so the
+   * predicates never had to change.
+   *
+   * The preview theme is applied to this root from the server-resolved variant,
+   * so the preview_theme/preview_copy carried across catalog links actually does
+   * something here. The switcher itself stays on home: per the v3 contract the
+   * shareable URL is the source of truth and storage is never restored.
    *
    * Untouched by design: the CMS degraded/noindex contract and the detail route.
    */
-  import FilterBar from '../../lib/FilterBar.svelte';
-  import FullFilterModal from '../../lib/FullFilterModal.svelte';
-  import SortModal from '../../lib/SortModal.svelte';
+  import CatalogFilterBar from '$lib/catalog/CatalogFilterBar.svelte';
+  import CatalogSortControl from '$lib/catalog/CatalogSortControl.svelte';
+  import CatalogFilterDialog from '$lib/catalog/CatalogFilterDialog.svelte';
   import CmsUnavailable from '$lib/CmsUnavailable.svelte';
   import CatalogCard from './CatalogCard.svelte';
   import QuietCoastHeader from '$lib/home/QuietCoastHeader.svelte';
@@ -31,8 +34,8 @@
 
   export let data;
 
-  let showSortModal = false;
-  let showModal = false;
+  let showFullFilters = false;
+  let fullFiltersOpener = null;
   // An outage yields an empty list plus data.cmsError; both paths must be safe.
   let filteredData = data.objects || [];
   let sortOptions = {};
@@ -41,6 +44,10 @@
   $: total = (data.objects || []).length;
   $: count = describeCount(filteredData.length, total);
   $: search = $page.url.search;
+
+  /* Production never enables the gate, so the attribute is simply absent. */
+  $: previewEnabled = data?.previewEnabled === true;
+  $: previewTheme = previewEnabled ? (data?.variant?.theme ?? null) : null;
 
   /* ---- existing filter/sort semantics, carried over verbatim ---- */
 
@@ -125,22 +132,19 @@
     });
   }
 
-  function openFullFilters() {
-    showModal = false;
-    setTimeout(() => showModal = true, 0);
+  function openFullFilters(event) {
+    // Remember the trigger so the dialog can return focus to it on close.
+    fullFiltersOpener = event?.detail?.opener ?? document.activeElement;
+    showFullFilters = true;
   }
 
   function handleFullFilter(event) {
     handleFilter(event);
   }
 
-  function applySort(newSortOptions) {
-    sortOptions = newSortOptions;
-    handleFilter({ detail: lastFilterOptions }, sortOptions);
-  }
-
   function handleSort(event) {
-    handleFilter({ detail: lastFilterOptions }, event.detail);
+    sortOptions = event.detail;
+    handleFilter({ detail: lastFilterOptions }, sortOptions);
   }
 
   function resetFilters() {
@@ -154,7 +158,7 @@
   <title>Каталог объектов на побережье Болгарии — Sea Estate</title>
   <meta
     name="description"
-    content="Объекты на болгарском побережье: город, площадь, спальни и этаж по каждому объекту. Цена и наличие уточняются по заявке."
+    content="Объекты на болгарском побережье: город, площадь, спальни и этаж по каждому объекту. Цена и наличие уточняются."
   />
 
   <!--
@@ -171,7 +175,7 @@
 
 <a class="qc-skip-link" href="#main">Перейти к основному содержанию</a>
 
-<div class="qc-home">
+<div class="qc-home" data-preview-theme={previewTheme}>
   <QuietCoastHeader />
 
   <main id="main">
@@ -183,9 +187,8 @@
           <p class="qc-label">Каталог</p>
           <h1 id="catalog-heading" class="qc-heading-2 heading">Объекты на побережье Болгарии</h1>
           <p class="qc-body-lg lead">
-            Здесь опубликованы объекты, которые есть у нас в работе. По каждому показываем
-            только те данные, которые получили от собственника или партнёра: город, площадь,
-            спальни и этаж. Цена и наличие уточняются по заявке.
+            Опубликованные объекты. По каждому показываем только те данные, которые у нас
+            есть: город, площадь, спальни и этаж. Цена и наличие уточняются.
           </p>
         </div>
       </section>
@@ -195,13 +198,11 @@
           <h2 id="results-heading" class="qc-heading-3 sub">Подбор по фильтрам</h2>
 
           <div class="filter-surface qc-panel">
-            <FilterBar on:filter={handleFilter} on:sort={handleSort} on:open-full-filters={openFullFilters} />
+            <CatalogFilterBar on:filter={handleFilter} on:open-full-filters={openFullFilters} />
+            <div class="sort-row">
+              <CatalogSortControl on:sort={handleSort} />
+            </div>
           </div>
-
-          <SortModal {showSortModal} {applySort} />
-          {#if showModal}
-            <FullFilterModal showModal={showModal} on:full-filter={handleFullFilter}/>
-          {/if}
 
           <p class="qc-data count" role="status" aria-live="polite">{count.text}</p>
 
@@ -209,8 +210,8 @@
             <div class="qc-panel state">
               <h3 class="qc-heading-3 state-title">Пока нет опубликованных объектов</h3>
               <p class="qc-body state-body">
-                Каталог доступен, но опубликованных объектов сейчас нет. Оставьте заявку — мы
-                пришлём подходящие варианты, как только они появятся.
+                Сейчас в каталоге нет опубликованных объектов. Опишите задачу — ответим по
+                вашему запросу.
               </p>
               <button
                 type="button"
@@ -224,8 +225,8 @@
             <div class="qc-panel state">
               <h3 class="qc-heading-3 state-title">Ничего не найдено по выбранным фильтрам</h3>
               <p class="qc-body state-body">
-                В каталоге {total} объектов, но ни один не подходит под выбранные условия.
-                Смягчите фильтры или расскажите о задаче — подберём вручную.
+                В каталоге {total} объектов, ни один не подходит под выбранные условия.
+                Смягчите фильтры или опишите задачу.
               </p>
               <div class="state-actions">
                 <button type="button" class="qc-cta qc-cta-secondary" on:click={resetFilters}>
@@ -255,8 +256,7 @@
           <p class="qc-label">Заявка</p>
           <h2 id="catalog-enquiry-heading" class="qc-heading-2 heading">Не нашли подходящий объект?</h2>
           <p class="qc-body-lg lead">
-            Расскажите, что вы ищете. Мы подберём варианты под вашу задачу и уточним цену и
-            наличие у собственника или партнёра.
+            Опишите, что вы ищете. Цену и наличие по конкретным объектам уточняем отдельно.
           </p>
           <button
             type="button"
@@ -272,6 +272,18 @@
 
   <QuietCoastFooter />
 </div>
+
+<!--
+  Outside .qc-home on purpose. The dialog inerts `.qc-home > *` while open, and a
+  dialog nested inside <main> would have been excluded from that sweep (it
+  contains the dialog), leaving the page reachable behind the modal — the same
+  trap the preview comparer hit.
+-->
+<CatalogFilterDialog
+  bind:open={showFullFilters}
+  opener={fullFiltersOpener}
+  on:full-filter={handleFullFilter}
+/>
 
 <style>
   .intro,
@@ -334,6 +346,11 @@
   .filter-surface :global(button:focus-visible) {
     outline: 3px solid var(--qc-focus);
     outline-offset: 2px;
+  }
+
+  .sort-row {
+    margin-top: var(--qc-space-3);
+    display: flex;
   }
 
   .count {
