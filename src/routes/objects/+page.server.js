@@ -1,5 +1,8 @@
-import { error } from '@sveltejs/kit'
-import { contentfulFetch } from '$lib/contentful-fetch';
+import { env } from '$env/dynamic/private';
+import { dev } from '$app/environment';
+import { contentfulFetch, resolveCmsFailure } from '$lib/contentful-fetch';
+import { BUILD_CONTEXT } from '$lib/build-context.js';
+import { resolvePreviewGate, resolvePreviewVariant, parseQueryPreview } from '$lib/preview-comparer.js';
 
 const query = `
 {
@@ -53,23 +56,43 @@ const query = `
 }
 `
 
-export async function load() {
-  console.log("Начало загрузки данных из Contentful");
+export async function load({ url }) {
+  /*
+   * Same preview contract as home, resolved on the server: the gate decides
+   * whether a variant may apply at all, and the QUERY is the only input. Slice 1
+   * carried preview_theme/preview_copy across catalog links; without this the
+   * catalog ignored them, so the carried query was decorative. The switcher
+   * itself stays on home — per the v3 contract the shareable URL is the source
+   * of truth, and storage is never restored.
+   */
+  const previewEnabled = resolvePreviewGate(BUILD_CONTEXT, {
+    dev,
+    override: env.SEA_ESTATE_PREVIEW_COMPARER
+  });
+  const variant = resolvePreviewVariant({
+    enabled: previewEnabled,
+    query: previewEnabled ? parseQueryPreview(url.searchParams) : {}
+  });
 
-  try {
-    const response = await contentfulFetch(query);
-    console.log("Данные получены от Contentful:", JSON.stringify(response, null, 2));
+  const response = await contentfulFetch(query);
 
-    if (!response.ok || !response.data || !response.data.objectCollection) {
-      throw new Error('Ответ не содержит коллекции объектов');
-    }
-
-    const { items } = response.data.objectCollection;
-    console.log("Полученные элементы из коллекции объектов:", items);
-
-    return { objects: items };
-  } catch (e) {
-    console.error("Ошибка в функции load:", e);
-    throw error(500, 'Внутренняя ошибка сервера');
+  /*
+   * A CMS outage is not a server error for the visitor: it is a page that
+   * cannot list objects right now. Throwing 500 dropped them into the framework
+   * error shell with no header, no footer and no way to reach us. Returning a
+   * described failure lets +page.svelte render it inside the site shell with a
+   * retry and a route to the enquiry form.
+   *
+   * Nothing about the credential or the response body travels in this object.
+   */
+  if (!response.ok || !response.data || !response.data.objectCollection) {
+    return { objects: [], cmsError: resolveCmsFailure(response), previewEnabled, variant };
   }
+
+  return {
+    objects: response.data.objectCollection.items,
+    cmsError: null,
+    previewEnabled,
+    variant
+  };
 }

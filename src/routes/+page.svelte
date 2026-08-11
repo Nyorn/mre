@@ -1,344 +1,184 @@
 <script>
-
-	import Preloader from '$lib/Preloader.svelte';
-	import FeedbackForm from '$lib/FeedbackForm.svelte';
-	import InfoBlock from '$lib/InfoBlock.svelte';
+	/*
+	 * Home — Quiet Coast shell.
+	 *
+	 * This route previously loaded three scripts before it could show anything:
+	 * Three.js from unpkg, a Splide shader carousel from /static, and a five-image
+	 * preload gated behind a hard 1500ms setTimeout that also locked body scroll.
+	 * All of it is gone. What replaces it is a static hero, the scenario entry,
+	 * process/evidence, enquiry and a footer — the IA in product-flow-delta.v1 §4.
+	 *
+	 * Shared modules the carousel used (Carousel, Preloader, InfoBlock) are NOT
+	 * deleted: other routes and the layout still reference them. Home simply stops
+	 * importing them, which tests/home-legacy-free.test.js pins down statically.
+	 *
+	 * LAYOUT CONTRACT for the comparer:
+	 *   - Initial render has zero unexpected shift. The variant comes from the
+	 *     query, resolved on the server, and nothing is restored from storage
+	 *     afterwards, so the first paint is already final.
+	 *   - The comparer BAR is server-rendered here, not inside the dynamically
+	 *     imported dialog. Its height at first paint is its final height at every
+	 *     breakpoint because it is the same DOM — no reserved slot to get wrong.
+	 *   - Changing COPY must not move anything: the hero reserves a measured slot.
+	 *   - Changing THEME may reflow lower sections, because the approved B and C
+	 *     directions genuinely differ in density and spacing. Allowed only as the
+	 *     direct result of that input.
+	 */
 	import { onMount } from 'svelte';
-	import '@splidejs/svelte-splide/css/splide.min.css';
-	import '@splidejs/splide/css';
-	import { loading } from '$lib/store.js';
-	import { getContext, setContext } from 'svelte';
+	import ScenarioEntry from '$lib/ScenarioEntry.svelte';
+	import QuietCoastHeader from '$lib/home/QuietCoastHeader.svelte';
+	import HomeHero from '$lib/home/HomeHero.svelte';
+	import ProcessEvidence from '$lib/home/ProcessEvidence.svelte';
+	import EnquirySection from '$lib/home/EnquirySection.svelte';
+	import QuietCoastFooter from '$lib/home/QuietCoastFooter.svelte';
+	import PreviewBar from '$lib/home/PreviewBar.svelte';
+	import { openEnquiry, INTENT } from '$lib/enquiry.js';
+	import { previewTheme } from '$lib/store.js';
+	import { DEFAULT_THEME, DEFAULT_COPY } from '$lib/preview-comparer.js';
+	import '$lib/styles/home-themes.css';
+	import '$lib/styles/preview-comparer.css';
 
-	let alwaysShowPreloader = true; // Новая переменная состояния для контроля прелоадера
+	export let data;
 
-	let contentVisible = false;
-	let splide;
-	let currentSlide = 0;
+	$: previewEnabled = data?.previewComparer === true;
+	$: serverVariant = data?.variant ?? { theme: DEFAULT_THEME, copy: DEFAULT_COPY };
 
+	/*
+	 * Production is pinned, not merely defaulted: a non-preview render uses
+	 * quiet/scenario regardless of what arrived in the payload.
+	 */
+	let theme = DEFAULT_THEME;
+	let copy = DEFAULT_COPY;
 
-	const overlaysContent = [
-		{
-			title: 'Погружение в райскую природу:',
-			paragraph: 'Инвестируйте в свой уголок среди изумрудных гор и бескрайних пляжей Черного моря.',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		},
-		{
-			title: 'Разнообразие недвижимости:',
-			paragraph: 'От стильных апартаментов до вилл с потрясающим видом на море - мы предлагаем разнообразие вариантов, чтобы воплотить ваши мечты в реальность.',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		},
-		{
-			title: 'Инвестиции с умом: ',
-			paragraph: 'Наша команда экспертов поможет вам сделать выгодные инвестиции в болгарскую недвижимость, обеспечивая стабильный доход и рост капитала.',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		},
-		{
-			title: 'Простой процесс сделки: ',
-			paragraph: 'Мы делаем покупку недвижимости в Болгарии легкой и прозрачной. Надежное сопровождение сделки от начала до конца.',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		},
-		{
-			title: 'Обретите свой уголок под солнцем с нами.',
-			paragraph: 'Выберите Болгарию для вашего нового дома или инвестиций! ',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		}
-	];
-	const images = [
-		'https://images.ctfassets.net/31g2btibassa/2C5LnBXILzwiuLyLqXZSOW/f8f3b3f9bc94c38b5d1802074b238032/8.avif',
-		'https://images.ctfassets.net/31g2btibassa/667lBEWzae2sxYHIByfVOX/183209fa433dbf633b527c09118fa59f/9.avif',
-		'https://images.ctfassets.net/31g2btibassa/5rqygkYnMRWV6SrFF99QV3/52b7097d451ba286d9562728839a4103/11-1-scaled.avif',
-		'https://images.ctfassets.net/31g2btibassa/2vX2EWllBrw5VA9WeMlQ9q/b3ac2ce275b88f1c46abee6e232227e7/burgas.avif',
-		'https://images.ctfassets.net/31g2btibassa/5axiBgylT6tNsCoa8Es4Gs/07491832211dd7b7392bc058c3871b78/7.avif',
+	$: theme = previewEnabled ? serverVariant.theme : DEFAULT_THEME;
+	$: copy = previewEnabled ? serverVariant.copy : DEFAULT_COPY;
 
-	];
+	/* Publish for the modal host, which lives outside .qc-home. */
+	$: previewTheme.set(previewEnabled ? theme : '');
 
-	function preloadImages() {
-		return Promise.all(
-			images.map((src) => {
-				return new Promise((resolve, reject) => {
-					const img = new Image();
-					img.src = src;
-					img.onload = resolve;
-					img.onerror = reject;
-				});
-			})
-		);
-	}
+	/* Server sends the resolved bundle; the table only exists in a preview. */
+	$: heroCopy =
+		(previewEnabled && data?.heroCopyTable?.[copy]) ||
+		data?.heroCopy || { eyebrow: '', h1: '', lead: '' };
 
-	// Инициализируем слайдер после монтирования компонента
+	let ComparerDialog = null;
+	let comparerOpen = false;
+	let comparerOpener = null;
+
 	onMount(async () => {
-		loading.set(true); // Явно устанавливаем состояние загрузки
-		document.body.style.overflow = 'hidden';
-		try {
-			await preloadImages();
-		} catch (error) {
-			console.error('Ошибка при загрузке изображений:', error);
-		}
-		setTimeout(() => {
-			loading.set(false); // Скрываем прелоадер после 2 секунд
-			document.body.style.overflow = '';
-		}, 1500);
-
-		// Function to handle hiding of preloader and showing content
-
-
-		// Initialize the Splide carousel
-		setTimeout(() => {
-			if (SplideShaderCarousel && SplideShaderCarousel.shaders && SplideShaderCarousel.shaders.dissolveShader) {
-				const { dissolveShader } = SplideShaderCarousel.shaders;
-				splide = new SplideShaderCarousel('.splide', dissolveShader, {
-					gradient: 'vertical',
-					type: 'fade',
-					height: '90vh',
-					rewind: true,
-					continuous: true,
-					autoplay: true,
-					pauseOnHover: false,
-					arrows: false,
-					speed: 1750,
-					mask: '/wave01.jpg'
-				});
-				splide.on('move', (newIndex) => {
-					currentSlide = newIndex;
-				});
-				splide.mount();
-			} else {
-				console.error('SplideShaderCarousel or dissolveShader is not available');
-			}
-		}, 1000);
-
-		// Cleanup function
-		return () => {
-			document.body.style.overflow = '';
-			window.removeEventListener('load', handleContentLoaded);
-		};
+		if (!previewEnabled) return;
+		const module = await import('$lib/PreviewComparerDialog.svelte');
+		ComparerDialog = module.default;
 	});
 
+	function openComparer(triggerEl) {
+		comparerOpener = triggerEl;
+		comparerOpen = true;
+	}
 
+	function onVariantChange(event) {
+		theme = event.detail.theme;
+		copy = event.detail.copy;
+	}
+
+	function openHeroEnquiry() {
+		openEnquiry({ intent: INTENT.SELECTION, scenario: data?.heroScenario || '' });
+	}
+
+	const PRODUCTION_HOME = 'https://sea-estate.com/';
 </script>
+
 <svelte:head>
-
-
-	<title>Sea Real Estate: Элитная Недвижимость на Первой Линии Моря в Болгарии</title>
-
-	<meta name="description"
-				content="Sea Real Estate предлагает эксклюзивную недвижимость в туристических зонах Болгарии. Лучшие предложения на первой и второй линии от моря. Узнайте больше!" />
-
-	<script src="https://unpkg.com/three@0.140.2/build/three.min.js"></script>
-	<script src="/splide-shader-carousel.min.js" defer></script>
+	<title>Sea Estate — недвижимость на побережье Болгарии под ваш сценарий владения</title>
+	<meta
+		name="description"
+		content="Подбор и сопровождение недвижимости на болгарском побережье — для жизни, отдыха, аренды или переезда. Начинаем с задачи, а не с каталога."
+	/>
+	<!-- A deploy preview must never compete with the live home page in search. -->
+	{#if previewEnabled}
+		<meta name="robots" content="noindex,nofollow" />
+	{/if}
+	<link rel="canonical" href={PRODUCTION_HOME} />
 </svelte:head>
 
+<a class="qc-skip-link" href="#main">Перейти к основному содержанию</a>
 
-<section class="splide" aria-label="Splide Shader Carousel Example" class:loaded={!loading}>
-	<div class="splide__track">
-		<ul class="splide__list">
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/2C5LnBXILzwiuLyLqXZSOW/f8f3b3f9bc94c38b5d1802074b238032/8.avif"
-				alt="Image 1" class="w-full" /></li>
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/667lBEWzae2sxYHIByfVOX/183209fa433dbf633b527c09118fa59f/9.avif" loading="lazy"
-				alt="Image 2" class="w-full" /></li>
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/5rqygkYnMRWV6SrFF99QV3/52b7097d451ba286d9562728839a4103/11-1-scaled.avif" loading="lazy"
-				alt="Image 3" class="w-full" /></li>
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/2vX2EWllBrw5VA9WeMlQ9q/b3ac2ce275b88f1c46abee6e232227e7/burgas.avif" loading="lazy"
-				alt="Image 4" class="w-full" /></li>
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/5axiBgylT6tNsCoa8Es4Gs/07491832211dd7b7392bc058c3871b78/7.avif" loading="lazy"
-				alt="Image 5" class="w-full" /></li>
-		</ul>
-	</div>
-	<div class="overlay"
-			 style={`left: ${currentSlide * (100 / (overlaysContent.length - 1))}%; transform: translateX(-${currentSlide === 0 ? 0 : currentSlide === overlaysContent.length - 1 ? 500 : 250}px);`}>
-		<h2>{overlaysContent[currentSlide].title}</h2>
-		<div class="divider"></div>
-		<p>{overlaysContent[currentSlide].paragraph}</p>
-		<a href="{overlaysContent[currentSlide].link}" class="learn-more">
-			{overlaysContent[currentSlide].button}
-			<span class="arrow-right"></span>
-		</a>
+<div class="qc-home" data-preview-theme={previewEnabled ? theme : null}>
+	{#if previewEnabled}
+		<PreviewBar {theme} {copy} open={comparerOpen} onOpen={openComparer} />
+	{/if}
 
+	<QuietCoastHeader />
 
-	</div>
-	<div class="progress-bar" />
-</section>
+	<main id="main">
+		<HomeHero
+			copy={heroCopy}
+			ctaPrimary={data?.heroCta?.primary}
+			ctaSecondary={data?.heroCta?.secondary}
+			onPrimary={openHeroEnquiry}
+			reserveHeight={previewEnabled}
+		/>
+		<ScenarioEntry />
+		<ProcessEvidence />
+		<EnquirySection />
+	</main>
 
-<InfoBlock />
-<FeedbackForm />
+	<QuietCoastFooter />
+</div>
 
+{#if previewEnabled && ComparerDialog}
+	<svelte:component
+		this={ComparerDialog}
+		{theme}
+		{copy}
+		bind:open={comparerOpen}
+		opener={comparerOpener}
+		on:change={onVariantChange}
+	/>
+{/if}
 
 <style>
-
-	.progress-bar {
-		display: none;
-		position: absolute;
-		top: 50%;
-		left: 0;
-		width: 100%;
-		height: 4px;
-		background-color: white;
-		z-index: 10;
-	}
-
-	.divider {
-		height: 4px; /* Невидимый элемент, служащий якорем для выравнивания */
-		width: 100%;
-		background-color: white;
-	}
-
-	.overlay {
-		backdrop-filter: blur(10px);
-		border-radius: 15px;
-		position: absolute;
-		bottom: 50%;
-		background-color: rgba(0, 0, 0, 0.5);
-		padding: 20px;
-		max-width: 500px;
-		width: 500px;
-		margin: auto;
-		text-align: center;
-		transition: left 1s ease;
-		transform: translateX(-50%);
-		min-height: 200px;
-		max-height: 90vh; /* 90% of the viewport height */
-	}
-
-	.overlay h2 {
-		font-size: 32px;
-		line-height: 1.1;
-		margin-bottom: 20px;
-		margin-top: 0;
-		min-height: 40px;
-	}
-
-	.overlay p {
-		font-size: 16px;
-		line-height: 1.5;
-		margin-top: 20px; /* Переопределяем в JS */
-		margin-bottom: 20px;
-	}
-
-
-
-	/* Существующие стили */
-
-	.learn-more {
+	/*
+	 * The shell is opaque and full-height on purpose. global.css paints two
+	 * radial gradients on <body> with background-attachment: fixed. Rather than
+	 * editing a global that every other route depends on, home covers it.
+	 *
+	 * No overflow-x: hidden here. That was masking real horizontal overflow
+	 * instead of fixing it. Overflow is prevented at the source (min-width: 0 on
+	 * flex/grid children, no forced word breaks), and the QA script asserts
+	 * scrollWidth === clientWidth at 320px.
+	 */
+	.qc-home {
 		position: relative;
-		padding-left: 50px; /* Пространство для линии слева от текста */
-		padding-right: 40px;
-		padding-top: 5px;
-		padding-bottom: 5px; /* Пространство для стрелки справа от текста */
-		display: inline-block;
-		cursor: pointer;
-		background-color: transparent; /* Фон кнопки */
-		color: white; /* Цвет текста кнопки */
-		text-decoration: none; /* Убираем подчеркивание */
-		border-radius: 5px; /* Скругляем углы */
-		border: #12ad9d solid 2px;
-		margin-top: 10px; /* Отступ сверху */
-		transition: transform 0.4s cubic-bezier(0.75, 0.02, 0.5, 1); /* Плавность анимации перемещения */
-		box-shadow: 0 0 10px 0 #12ad9d;
+		min-height: 100vh;
+		background: var(--qc-surface);
+		font-family: var(--qc-font-ui);
+		color: var(--qc-ink-700);
 	}
 
-	.learn-more::before {
-		content: "";
+	.qc-home :global(main) {
+		display: block;
+	}
+
+	.qc-skip-link {
 		position: absolute;
-		top: 50%;
-		left: -50px; /* Фиксированная позиция линии слева от кнопки */
-		transform: translateY(-50%);
-		width: 45px; /* Ширина линии */
-		height: 2px; /* Высота линии */
-		background: #12ad9d; /* Цвет линии */
-		z-index: -1; /* Линия находится под текстом кнопки */
-		transition: width 0.4s cubic-bezier(0.75, 0.02, 0.5, 1); /* Плавность анимации линии */
-		box-shadow: 0 0 10px 0 #12ad9d;
+		/* Translated out of view rather than left: -9999px, which was itself real
+		   horizontal overflow measurable at 320px. */
+		left: 0;
+		top: 0;
+		transform: translateY(-200%);
+		z-index: 1300;
+		padding: 12px 16px;
+		background: var(--qc-surface);
+		color: var(--qc-ink-950);
+		border: 2px solid var(--qc-focus);
+		border-radius: 0 0 6px 0;
+		font-family: var(--qc-font-ui);
+		font-size: 16px;
+		text-decoration: none;
 	}
 
-	.learn-more::after {
-		content: "";
-		position: absolute;
-		top: 50%;
-		right: 0px;
-		transform: translateY(-50%) translateX(100%);
-		width: 0;
-		height: 18px;
-		background-image: url("data:image/svg+xml,%3Csvg width='42' height='18' viewBox='0 0 42 18' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.810791 8.67636L40.1891 8.67636M40.1891 8.67636L33.3612 0.892578M40.1891 8.67636L33.3612 16.4601' stroke='%2312ad9d' stroke-width='2'/%3E%3C/svg%3E%0A");
-		background-repeat: no-repeat;
-		background-position: center;
-		background-size: contain;
-		transition: width 0.4s cubic-bezier(0.75, 0.02, 0.5, 1), right 0.4s cubic-bezier(0.75, 0.02, 0.5, 1);
-		opacity: 0;
-
-	}
-
-
-	.learn-more:hover {
-		transform: translateX(-35px); /* Перемещение кнопки влево */
-	}
-
-	.learn-more:hover::before {
-		width: 0; /* Скрываем линию при наведении */
-	}
-
-	.learn-more:hover::after {
-		width: 46px; /* Длина стрелки */
-		right: -2px; /* Положение стрелки при наведении */
-		opacity: 1; /* Стрелка видна */
-
-	}
-
-
-	@media (min-width: 1080px) {
-
-		.progress-bar {
-			display: none;
-			position: absolute;
-			top: 45%; /* Располагаем прогресс бар на нужной высоте */
-			left: 0;
-			width: 100%;
-			height: 4px;
-			background-color: white;
-			z-index: 10;
-		}
-	}
-
-	/* Стили для адаптации подложки на меньших экранах */
-	@media (max-width: 1080px) {
-		.overlay {
-			left: 50% !important;
-			transform: translateX(-50%) !important;
-			bottom: 30%;
-		}
-
-		.progress-bar {
-			display: none;
-		}
-	}
-
-
-
-	/* Медиа-запрос для мобильных устройств */
-	@media (max-width: 530px) {
-		.overlay {
-			max-width: 300px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
-
-
-		}
-	}
-
-	@media (max-width: 330px) {
-		.overlay {
-			max-width: 300px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
-		}
+	.qc-skip-link:focus {
+		transform: translateY(0);
 	}
 </style>
-
-
-
-

@@ -5,3 +5,10 @@ node_modules
 .env
 .env.*
 !.env.example
+
+# Build output. These were tracked, and because $env/static/private inlines
+# values at build time, .netlify/server/chunks/contentful-fetch.js carried a
+# live Contentful Delivery token in every clone. Removed from the index in the
+# same commit that moved Contentful onto $env/dynamic/private.
+/build
+/.netlify

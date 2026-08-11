@@ -1,10 +1,8 @@
 import { error } from '@sveltejs/kit'
 import { documentToHtmlString } from '@contentful/rich-text-html-renderer'
-import { contentfulFetch } from '$lib/contentful-fetch';
-
+import { contentfulFetch, resolveCmsFailure } from '$lib/contentful-fetch';
 
 export async function load({ params }) {
-  console.log("Slug in slug.server.js:", params.slug);
   const query = `
   {
        objectCollection(where: {slug: "${params.slug}"}) {
@@ -52,25 +50,30 @@ export async function load({ params }) {
   }
   `;
   const response = await contentfulFetch(query);
-  console.log("Обработанный ответ от Contentful:", response);
 
-  if (!response.ok) {
-    console.error("Ошибка HTTP запроса:", response.status, response.statusText, response.error);
-    throw error(response.status || 500, {
-      message: response.statusText || 'Ошибка загрузки данных'
-    });
+  /*
+   * Two failures that used to look identical and must not.
+   *
+   * CMS unreachable -> the object may well exist; we simply cannot say. That is
+   * a degraded page inside the shell with a retry, not a 500 and not a 404.
+   * Telling a visitor "not found" when the catalog is down is a lie that also
+   * invites search engines to drop a real URL.
+   */
+  if (!response.ok || !response.data || !response.data.objectCollection) {
+    return { object: null, cmsError: resolveCmsFailure(response) };
   }
 
-  if (!response.data || !response.data.objectCollection || !response.data.objectCollection.items.length) {
-    console.error("Ответ от Contentful не содержит данных:", response.data);
-    throw error(404, 'Данные не найдены');
+  /*
+   * CMS answered and has no such slug -> genuinely missing. 404 stays 404.
+   */
+  if (!response.data.objectCollection.items.length) {
+    throw error(404, 'Объект не найден');
   }
 
   const objectData = response.data.objectCollection.items[0];
-  objectData.description = documentToHtmlString(objectData.description.json);
+  objectData.description = objectData.description
+    ? documentToHtmlString(objectData.description.json)
+    : '';
 
-  return {
-    object: objectData,
-  };
+  return { object: objectData, cmsError: null };
 }
-

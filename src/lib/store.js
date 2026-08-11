@@ -28,3 +28,17 @@ function createModalStack() {
 export const modalStack = createModalStack();
 export const loading = writable(true);
 export const isFullFilterVisible = writable(false);
+
+/*
+ * Active preview theme id, or '' in production.
+ *
+ * The modal host renders in the layout, outside .qc-home, so the theme tokens
+ * scoped to the home wrapper never reached it: the enquiry window stayed Quiet
+ * Coast under every direction, which made the B/C comparison incomplete exactly
+ * where a partner looks hardest. The home page publishes the active id here and
+ * the modal mirrors it onto its own element.
+ *
+ * Production never writes to this store, so the modal has no theme attribute and
+ * renders in the default palette.
+ */
+export const previewTheme = writable('');
