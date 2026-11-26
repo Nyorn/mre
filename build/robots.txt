@@ -1,4 +1,0 @@
-User-agent: *
-Disallow: /admin/
-Disallow: /login/
-Sitemap: https://sea-estate.com/sitemap.xml

@@ -1,344 +1,195 @@
 <script>
+	import { stage } from '#lib/stage/state.svelte.js';
+	import { formatDistance } from '#lib/geo/math.js';
 
-	import Preloader from '$lib/Preloader.svelte';
-	import FeedbackForm from '$lib/FeedbackForm.svelte';
-	import InfoBlock from '$lib/InfoBlock.svelte';
-	import { onMount } from 'svelte';
-	import '@splidejs/svelte-splide/css/splide.min.css';
-	import '@splidejs/splide/css';
-	import { loading } from '$lib/store.js';
-	import { getContext, setContext } from 'svelte';
-
-	let alwaysShowPreloader = true; // Новая переменная состояния для контроля прелоадера
-
-	let contentVisible = false;
-	let splide;
-	let currentSlide = 0;
-
-
-	const overlaysContent = [
-		{
-			title: 'Погружение в райскую природу:',
-			paragraph: 'Инвестируйте в свой уголок среди изумрудных гор и бескрайних пляжей Черного моря.',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		},
-		{
-			title: 'Разнообразие недвижимости:',
-			paragraph: 'От стильных апартаментов до вилл с потрясающим видом на море - мы предлагаем разнообразие вариантов, чтобы воплотить ваши мечты в реальность.',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		},
-		{
-			title: 'Инвестиции с умом: ',
-			paragraph: 'Наша команда экспертов поможет вам сделать выгодные инвестиции в болгарскую недвижимость, обеспечивая стабильный доход и рост капитала.',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		},
-		{
-			title: 'Простой процесс сделки: ',
-			paragraph: 'Мы делаем покупку недвижимости в Болгарии легкой и прозрачной. Надежное сопровождение сделки от начала до конца.',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		},
-		{
-			title: 'Обретите свой уголок под солнцем с нами.',
-			paragraph: 'Выберите Болгарию для вашего нового дома или инвестиций! ',
-			button: 'Подробнее',
-			link: 'https://sea-estate.com/objects'
-		}
-	];
-	const images = [
-		'https://images.ctfassets.net/31g2btibassa/2C5LnBXILzwiuLyLqXZSOW/f8f3b3f9bc94c38b5d1802074b238032/8.avif',
-		'https://images.ctfassets.net/31g2btibassa/667lBEWzae2sxYHIByfVOX/183209fa433dbf633b527c09118fa59f/9.avif',
-		'https://images.ctfassets.net/31g2btibassa/5rqygkYnMRWV6SrFF99QV3/52b7097d451ba286d9562728839a4103/11-1-scaled.avif',
-		'https://images.ctfassets.net/31g2btibassa/2vX2EWllBrw5VA9WeMlQ9q/b3ac2ce275b88f1c46abee6e232227e7/burgas.avif',
-		'https://images.ctfassets.net/31g2btibassa/5axiBgylT6tNsCoa8Es4Gs/07491832211dd7b7392bc058c3871b78/7.avif',
-
-	];
-
-	function preloadImages() {
-		return Promise.all(
-			images.map((src) => {
-				return new Promise((resolve, reject) => {
-					const img = new Image();
-					img.src = src;
-					img.onload = resolve;
-					img.onerror = reject;
-				});
-			})
-		);
-	}
-
-	// Инициализируем слайдер после монтирования компонента
-	onMount(async () => {
-		loading.set(true); // Явно устанавливаем состояние загрузки
-		document.body.style.overflow = 'hidden';
-		try {
-			await preloadImages();
-		} catch (error) {
-			console.error('Ошибка при загрузке изображений:', error);
-		}
-		setTimeout(() => {
-			loading.set(false); // Скрываем прелоадер после 2 секунд
-			document.body.style.overflow = '';
-		}, 1500);
-
-		// Function to handle hiding of preloader and showing content
-
-
-		// Initialize the Splide carousel
-		setTimeout(() => {
-			if (SplideShaderCarousel && SplideShaderCarousel.shaders && SplideShaderCarousel.shaders.dissolveShader) {
-				const { dissolveShader } = SplideShaderCarousel.shaders;
-				splide = new SplideShaderCarousel('.splide', dissolveShader, {
-					gradient: 'vertical',
-					type: 'fade',
-					height: '90vh',
-					rewind: true,
-					continuous: true,
-					autoplay: true,
-					pauseOnHover: false,
-					arrows: false,
-					speed: 1750,
-					mask: '/wave01.jpg'
-				});
-				splide.on('move', (newIndex) => {
-					currentSlide = newIndex;
-				});
-				splide.mount();
-			} else {
-				console.error('SplideShaderCarousel or dissolveShader is not available');
-			}
-		}, 1000);
-
-		// Cleanup function
-		return () => {
-			document.body.style.overflow = '';
-			window.removeEventListener('load', handleContentLoaded);
-		};
+	let { data } = $props();
+	const words = ['Дом', 'на', 'первой', 'линии'];
+	const listOn = $derived(stage.phase === 'over' || !stage.webgl);
+	const heroOn = $derived(['intro', 'turn', 'over'].includes(stage.phase) || !stage.webgl);
+	$effect(() => {
+		stage.dim = 0;
 	});
-
-
 </script>
+
 <svelte:head>
-
-
-	<title>Sea Real Estate: Элитная Недвижимость на Первой Линии Моря в Болгарии</title>
-
-	<meta name="description"
-				content="Sea Real Estate предлагает эксклюзивную недвижимость в туристических зонах Болгарии. Лучшие предложения на первой и второй линии от моря. Узнайте больше!" />
-
-	<script src="https://unpkg.com/three@0.140.2/build/three.min.js"></script>
-	<script src="/splide-shader-carousel.min.js" defer></script>
+	<title>Sea Estate — недвижимость на первой линии болгарского побережья</title>
+	<meta
+		name="description"
+		content="Несколько отобранных объектов на Черноморском побережье Болгарии: Балчик, Свети Влас, Несебр, Созополь. У каждого честно измерено расстояние до моря."
+	/>
 </svelte:head>
 
-
-<section class="splide" aria-label="Splide Shader Carousel Example" class:loaded={!loading}>
-	<div class="splide__track">
-		<ul class="splide__list">
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/2C5LnBXILzwiuLyLqXZSOW/f8f3b3f9bc94c38b5d1802074b238032/8.avif"
-				alt="Image 1" class="w-full" /></li>
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/667lBEWzae2sxYHIByfVOX/183209fa433dbf633b527c09118fa59f/9.avif" loading="lazy"
-				alt="Image 2" class="w-full" /></li>
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/5rqygkYnMRWV6SrFF99QV3/52b7097d451ba286d9562728839a4103/11-1-scaled.avif" loading="lazy"
-				alt="Image 3" class="w-full" /></li>
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/2vX2EWllBrw5VA9WeMlQ9q/b3ac2ce275b88f1c46abee6e232227e7/burgas.avif" loading="lazy"
-				alt="Image 4" class="w-full" /></li>
-			<li class="splide__slide"><img
-				src="https://images.ctfassets.net/31g2btibassa/5axiBgylT6tNsCoa8Es4Gs/07491832211dd7b7392bc058c3871b78/7.avif" loading="lazy"
-				alt="Image 5" class="w-full" /></li>
-		</ul>
-	</div>
-	<div class="overlay"
-			 style={`left: ${currentSlide * (100 / (overlaysContent.length - 1))}%; transform: translateX(-${currentSlide === 0 ? 0 : currentSlide === overlaysContent.length - 1 ? 500 : 250}px);`}>
-		<h2>{overlaysContent[currentSlide].title}</h2>
-		<div class="divider"></div>
-		<p>{overlaysContent[currentSlide].paragraph}</p>
-		<a href="{overlaysContent[currentSlide].link}" class="learn-more">
-			{overlaysContent[currentSlide].button}
-			<span class="arrow-right"></span>
-		</a>
-
-
-	</div>
-	<div class="progress-bar" />
+<section class="hero" class:on={heroOn} style:--base={stage.phase === 'intro' ? '0.9s' : '0.05s'} aria-labelledby="h">
+	<h1 id="h">
+		{#each words as w, i}
+			<span class="w" style:--i={i}><span>{w}</span></span>{' '}
+		{/each}
+	</h1>
+	<p>Несколько объектов на болгарском побережье. У каждого честно измерено расстояние до воды.</p>
 </section>
 
-<InfoBlock />
-<FeedbackForm />
-
+<section class="index" class:on={listOn} id="objects" aria-labelledby="objh">
+	<h2 id="objh">Объекты на карте</h2>
+	<ol>
+		{#each data.properties as p (p.slug)}
+			<li>
+				<a href="/objects/{p.slug}">
+					<span class="t">{p.title}</span>
+					<em>{formatDistance(p.sea.meters)} до моря</em>
+				</a>
+			</li>
+		{/each}
+	</ol>
+	<p class="note">Пока демо-объекты: данные условные, расстояния настоящие.</p>
+</section>
 
 <style>
-
-	.progress-bar {
-		display: none;
-		position: absolute;
-		top: 50%;
-		left: 0;
-		width: 100%;
-		height: 4px;
-		background-color: white;
-		z-index: 10;
-	}
-
-	.divider {
-		height: 4px; /* Невидимый элемент, служащий якорем для выравнивания */
-		width: 100%;
-		background-color: white;
-	}
-
-	.overlay {
-		backdrop-filter: blur(10px);
-		border-radius: 15px;
-		position: absolute;
-		bottom: 50%;
-		background-color: rgba(0, 0, 0, 0.5);
-		padding: 20px;
-		max-width: 500px;
-		width: 500px;
-		margin: auto;
-		text-align: center;
-		transition: left 1s ease;
-		transform: translateX(-50%);
-		min-height: 200px;
-		max-height: 90vh; /* 90% of the viewport height */
-	}
-
-	.overlay h2 {
-		font-size: 32px;
-		line-height: 1.1;
-		margin-bottom: 20px;
-		margin-top: 0;
-		min-height: 40px;
-	}
-
-	.overlay p {
-		font-size: 16px;
-		line-height: 1.5;
-		margin-top: 20px; /* Переопределяем в JS */
-		margin-bottom: 20px;
-	}
-
-
-
-	/* Существующие стили */
-
-	.learn-more {
-		position: relative;
-		padding-left: 50px; /* Пространство для линии слева от текста */
-		padding-right: 40px;
-		padding-top: 5px;
-		padding-bottom: 5px; /* Пространство для стрелки справа от текста */
-		display: inline-block;
-		cursor: pointer;
-		background-color: transparent; /* Фон кнопки */
-		color: white; /* Цвет текста кнопки */
-		text-decoration: none; /* Убираем подчеркивание */
-		border-radius: 5px; /* Скругляем углы */
-		border: #12ad9d solid 2px;
-		margin-top: 10px; /* Отступ сверху */
-		transition: transform 0.4s cubic-bezier(0.75, 0.02, 0.5, 1); /* Плавность анимации перемещения */
-		box-shadow: 0 0 10px 0 #12ad9d;
-	}
-
-	.learn-more::before {
-		content: "";
-		position: absolute;
-		top: 50%;
-		left: -50px; /* Фиксированная позиция линии слева от кнопки */
-		transform: translateY(-50%);
-		width: 45px; /* Ширина линии */
-		height: 2px; /* Высота линии */
-		background: #12ad9d; /* Цвет линии */
-		z-index: -1; /* Линия находится под текстом кнопки */
-		transition: width 0.4s cubic-bezier(0.75, 0.02, 0.5, 1); /* Плавность анимации линии */
-		box-shadow: 0 0 10px 0 #12ad9d;
-	}
-
-	.learn-more::after {
-		content: "";
-		position: absolute;
-		top: 50%;
-		right: 0px;
-		transform: translateY(-50%) translateX(100%);
-		width: 0;
-		height: 18px;
-		background-image: url("data:image/svg+xml,%3Csvg width='42' height='18' viewBox='0 0 42 18' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0.810791 8.67636L40.1891 8.67636M40.1891 8.67636L33.3612 0.892578M40.1891 8.67636L33.3612 16.4601' stroke='%2312ad9d' stroke-width='2'/%3E%3C/svg%3E%0A");
-		background-repeat: no-repeat;
-		background-position: center;
-		background-size: contain;
-		transition: width 0.4s cubic-bezier(0.75, 0.02, 0.5, 1), right 0.4s cubic-bezier(0.75, 0.02, 0.5, 1);
+	.hero {
+		position: fixed;
+		left: var(--gutter);
+		bottom: clamp(110px, 16vh, 170px);
+		max-width: 640px;
+		pointer-events: none;
 		opacity: 0;
-
+		transition: opacity 0.8s var(--ease);
 	}
-
-
-	.learn-more:hover {
-		transform: translateX(-35px); /* Перемещение кнопки влево */
+	.hero.on {
+		opacity: 1;
 	}
-
-	.learn-more:hover::before {
-		width: 0; /* Скрываем линию при наведении */
+	h1 {
+		font-weight: 500;
+		font-size: clamp(44px, 7.2vw, 108px);
+		line-height: 0.94;
+		letter-spacing: -0.045em;
 	}
-
-	.learn-more:hover::after {
-		width: 46px; /* Длина стрелки */
-		right: -2px; /* Положение стрелки при наведении */
-		opacity: 1; /* Стрелка видна */
-
+	.w {
+		display: inline-block;
+		overflow: hidden;
+		vertical-align: top;
+		padding-bottom: 0.06em;
 	}
-
-
-	@media (min-width: 1080px) {
-
-		.progress-bar {
+	.w > span {
+		display: inline-block;
+		translate: 0 105%;
+	}
+	.hero.on .w > span {
+		translate: 0 0;
+		transition: translate 1.3s var(--ease) calc(var(--base) + var(--i) * 0.2s);
+	}
+	.hero p {
+		margin-top: 22px;
+		font-size: 17px;
+		line-height: 1.5;
+		color: var(--muted);
+		max-width: 430px;
+		opacity: 0;
+		transition: opacity 1.2s var(--ease) calc(var(--base) + 1.2s);
+	}
+	.hero.on p {
+		opacity: 1;
+	}
+	.index {
+		position: fixed;
+		right: var(--gutter);
+		bottom: 24px;
+		width: min(360px, calc(100vw - 2 * var(--gutter)));
+		opacity: 0;
+		translate: 0 12px;
+		pointer-events: none;
+		transition:
+			opacity 0.7s var(--ease),
+			translate 0.9s var(--ease);
+	}
+	.index.on {
+		opacity: 1;
+		translate: 0 0;
+		pointer-events: auto;
+	}
+	h2 {
+		font-size: 13px;
+		font-weight: 400;
+		color: var(--muted);
+		margin-bottom: 8px;
+	}
+	ol {
+		list-style: none;
+		border-top: 1px solid var(--line);
+		background: linear-gradient(90deg, rgba(3, 9, 13, 0), rgba(3, 9, 13, 0.35));
+	}
+	li a {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 16px;
+		padding: 12px 0;
+		border-bottom: 1px solid var(--line);
+		text-decoration: none;
+		font-size: 15px;
+		position: relative;
+	}
+	li a em {
+		font-style: normal;
+		font-size: 13px;
+		color: var(--muted);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+		transition: color 0.3s;
+	}
+	li a::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		bottom: -1px;
+		height: 1px;
+		width: 100%;
+		background: var(--accent);
+		box-shadow: 0 0 8px var(--accent);
+		transform: scaleX(0);
+		transform-origin: left;
+		transition: transform 0.6s var(--ease);
+	}
+	li a:hover::before,
+	li a:focus-visible::before {
+		transform: scaleX(1);
+	}
+	li a:hover em {
+		color: var(--accent);
+	}
+	.note {
+		margin-top: 10px;
+		font-size: 12px;
+		color: var(--muted);
+	}
+	@media (max-width: 760px) {
+		.hero {
+			bottom: auto;
+			top: 84px;
+		}
+		.hero p {
+			font-size: 15px;
+		}
+		.index {
+			bottom: 12px;
+		}
+		.index ol {
+			background: rgba(3, 9, 13, 0.6);
+			backdrop-filter: blur(8px);
+		}
+		li a {
+			padding: 10px 8px;
+			font-size: 14px;
+		}
+		.note {
 			display: none;
-			position: absolute;
-			top: 45%; /* Располагаем прогресс бар на нужной высоте */
-			left: 0;
-			width: 100%;
-			height: 4px;
-			background-color: white;
-			z-index: 10;
 		}
 	}
-
-	/* Стили для адаптации подложки на меньших экранах */
-	@media (max-width: 1080px) {
-		.overlay {
-			left: 50% !important;
-			transform: translateX(-50%) !important;
-			bottom: 30%;
+	@media (max-height: 760px) and (min-width: 761px) {
+		h1 {
+			font-size: clamp(40px, 5.6vw, 84px);
 		}
-
-		.progress-bar {
-			display: none;
-		}
-	}
-
-
-
-	/* Медиа-запрос для мобильных устройств */
-	@media (max-width: 530px) {
-		.overlay {
-			max-width: 300px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
-
-
-		}
-	}
-
-	@media (max-width: 330px) {
-		.overlay {
-			max-width: 300px; /* Убедитесь, что на мобильных устройствах высота также автоматическая */
+		.hero {
+			bottom: auto;
+			top: 96px;
 		}
 	}
 </style>
-
-
-
-
