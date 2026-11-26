@@ -59,7 +59,13 @@ coast = []
 for el in osm["elements"]:
     g = el.get("geometry") or []
     pts = [proj(p["lat"], p["lon"]) for p in g[::2]] + ([proj(g[-1]["lat"], g[-1]["lon"])] if g else [])
-    if len(pts) > 1: coast.append(pts)
+    run = []
+    for u, v in pts:  # keep only runs inside the terrain bbox
+        if 0 <= u <= 1 and 0 <= v <= 1: run.append((u, v))
+        else:
+            if len(run) > 1: coast.append(run)
+            run = []
+    if len(run) > 1: coast.append(run)
 
 meta = {"bbox": [S, N, W, E], "km": [round(km_w, 2), round(km_h, 2)], "size": [OUT_W, out_h],
         "landMax": LAND_MAX, "seaMax": SEA_MAX, "maxElev": float(h.max()), "minElev": float(h.min())}

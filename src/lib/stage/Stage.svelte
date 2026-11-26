@@ -11,6 +11,7 @@
 	let tapeEl;
 	let horizonEl;
 	let coordsEl;
+	let townsEl;
 	let clock = $state('');
 	let tapeValue = $state('');
 	let horizonDrawn = $state(false);
@@ -23,7 +24,7 @@
 		if (!pinsEl) return;
 		const els = pinsEl.children;
 		const order = frame.pins.map((p, i) => i).filter((i) => frame.pins[i].vis).sort((a, b) => frame.pins[b].y - frame.pins[a].y);
-		const placed = [];
+		const placed = (lastPlaced = []);
 		for (let i = 0; i < els.length; i++) els[i].style.visibility = 'hidden';
 		for (const i of order) {
 			const f = frame.pins[i], el = els[i];
@@ -40,9 +41,19 @@
 		}
 	}
 
+	let lastPlaced = [];
 	let n = 0;
 	function onFrame(frame) {
 		if (showPins) layoutPins(frame);
+		if (townsEl && stage.phase === 'over') {
+			for (let i = 0; i < frame.towns.length; i++) {
+				const f = frame.towns[i], el = townsEl.children[i];
+				el.style.transform = `translate(${f.x}px, ${f.y}px)`;
+				const hw = el.offsetWidth / 2 + 8;
+				const clash = showPins && lastPlaced.some((r) => !(f.x + hw < r.l || f.x - hw > r.r || f.y + 10 < r.t || f.y - 10 > r.b + 8));
+				el.style.visibility = f.vis && !clash ? 'visible' : 'hidden';
+			}
+		}
 		if (tapeEl) {
 			tapeEl.style.transform = `translate(${frame.tape.x}px, ${frame.tape.y}px)`;
 			tapeEl.style.opacity = frame.tape.vis ? '1' : '0';
@@ -180,6 +191,10 @@
 	aria-hidden="true"
 ></div>
 
+<div class="towns" class:on={showPins} bind:this={townsEl} aria-hidden="true">
+	{#each ['Варна', 'Бургас', 'мыс Калиакра', 'мыс Эмине'] as t}<span>{t}</span>{/each}
+</div>
+
 <nav class="pins" class:on={showPins} bind:this={pinsEl} aria-label="Объекты на карте">
 	{#each properties as p (p.slug)}
 		<a class="pin" href="/objects/{p.slug}" tabindex={showPins ? 0 : -1}>
@@ -215,6 +230,46 @@
 	}
 	.fallback canvas {
 		display: none;
+	}
+	.stage::after,
+	.stage::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		pointer-events: none;
+	}
+	.stage::after {
+		background: radial-gradient(130% 100% at 50% 42%, transparent 50%, rgba(2, 6, 9, 0.6) 100%);
+	}
+	.stage::before {
+		z-index: 2;
+		opacity: 0.07;
+		background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+	}
+	.towns {
+		position: fixed;
+		inset: 0;
+		z-index: 3;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.8s var(--ease);
+	}
+	.towns.on {
+		opacity: 1;
+	}
+	.towns span {
+		position: absolute;
+		left: 0;
+		top: 0;
+		translate: -50% -50%;
+		font-size: 10.5px;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: rgba(236, 239, 232, 0.55);
+		text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+		white-space: nowrap;
+		visibility: hidden;
 	}
 	.dim {
 		position: absolute;
