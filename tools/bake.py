@@ -76,3 +76,35 @@ places = {"Балчик": (43.405, 28.165), "Варна": (43.204, 27.91), "Бя
 meta["places"] = {k: proj(*v) for k, v in places.items()}
 json.dump({"meta": meta, "coast": coast}, open(os.path.join(OUT, "geo.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 print(meta, sum(len(c) for c in coast))
+
+
+# ---------- land use: R = built-up (towns, resorts, industry), G = beaches ----------
+LU = os.path.join(HERE, "landuse_osm.json")
+if os.path.exists(LU):
+    from PIL import ImageDraw
+    LW = 2048
+    LH = int(LW * out_h / OUT_W)
+    urban = Image.new("L", (LW, LH), 0)
+    beach = Image.new("L", (LW, LH), 0)
+    du, db = ImageDraw.Draw(urban), ImageDraw.Draw(beach)
+    def ring(geom):
+        return [(u * LW, v * LH) for u, v in (proj(p["lat"], p["lon"]) for p in geom)]
+    n = 0
+    for el in json.load(open(LU, encoding="utf-8"))["elements"]:
+        tags = el.get("tags", {})
+        rings = []
+        if el["type"] == "way" and el.get("geometry"):
+            rings = [el["geometry"]]
+        elif el["type"] == "relation":
+            rings = [m["geometry"] for m in el.get("members", []) if m.get("role") == "outer" and m.get("geometry")]
+        for g in rings:
+            pts = ring(g)
+            if len(pts) < 3: continue
+            (db if tags.get("natural") == "beach" else du).polygon(pts, fill=255); n += 1
+    urban = urban.filter(ImageFilter.GaussianBlur(0.8))
+    beach = beach.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
+    zero = Image.new("L", (LW, LH), 0)
+    Image.merge("RGB", (urban, beach, zero)).save(os.path.join(OUT, "landuse.png"), optimize=True)
+    meta["landuse"] = [LW, LH]
+    json.dump({"meta": meta, "coast": coast}, open(os.path.join(OUT, "geo.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    print("landuse polygons:", n)

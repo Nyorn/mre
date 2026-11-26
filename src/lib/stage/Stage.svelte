@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { stage, sceneRef } from './state.svelte.js';
 	import { formatDistance } from '#lib/geo/math.js';
+	import { PLACES } from '#lib/geo/places.js';
 
 	let { properties } = $props();
 
@@ -17,6 +18,7 @@
 	let horizonDrawn = $state(false);
 
 	const showPins = $derived(stage.phase === 'over' && page.url.pathname === '/');
+	const pinPlaces = new Set(properties.map((p) => p.place));
 	const showSkip = $derived(stage.phase === 'intro' || stage.phase === 'turn');
 	const slugFromPath = (p) => (p.startsWith('/objects/') ? p.slice(9).replace(/[/]$/, '') : null);
 
@@ -46,9 +48,19 @@
 	function onFrame(frame) {
 		if (showPins) layoutPins(frame);
 		if (townsEl && stage.phase === 'over') {
+			const placed = [];
 			for (let i = 0; i < frame.towns.length; i++) {
 				const f = frame.towns[i], el = townsEl.children[i];
 				el.style.transform = `translate(${f.x}px, ${f.y}px)`;
+				const range = f.tier === 1 ? 1e9 : f.tier === 2 ? 150 : 200;
+				const pinned = pinPlaces.has(f.name);
+				const w2 = (el.__w || (el.__w = el.offsetWidth)) / 2 + 6;
+				const overlap = placed.some((r) => Math.abs(r.x - f.x) < r.w + w2 && Math.abs(r.y - f.y) < 16);
+				if (f.vis && f.d < range && !pinned && !overlap) placed.push({ x: f.x, y: f.y, w: w2 });
+				else {
+					el.style.visibility = 'hidden';
+					continue;
+				}
 				const hw = el.offsetWidth / 2 + 8;
 				const clash = showPins && lastPlaced.some((r) => !(f.x + hw < r.l || f.x - hw > r.r || f.y + 10 < r.t || f.y - 10 > r.b + 8));
 				el.style.visibility = f.vis && !clash ? 'visible' : 'hidden';
@@ -106,11 +118,14 @@
 	}
 
 	let lastPath = null;
+	const matchMediaCoarse = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 	$effect(() => {
 		const path = page.url.pathname;
 		if (!stage.ready || path === lastPath) return;
 		const first = lastPath === null;
 		lastPath = path;
+		sceneRef.api?.setControls(path === '/');
+		stage.explore = false;
 		routeChanged(path, first);
 	});
 
@@ -138,7 +153,8 @@
 						reduce,
 						mobile,
 						onFrame,
-						onPhase: (p) => (stage.phase = p)
+						onPhase: (p) => (stage.phase = p),
+						onInteract: () => (stage.explore = true)
 					})
 				)
 				.then((api) => {
@@ -192,7 +208,7 @@
 ></div>
 
 <div class="towns" class:on={showPins} bind:this={townsEl} aria-hidden="true">
-	{#each ['Варна', 'Бургас', 'мыс Калиакра', 'мыс Эмине'] as t}<span>{t}</span>{/each}
+	{#each PLACES as t}<span class="t{t.tier}">{t.name}</span>{/each}
 </div>
 
 <nav class="pins" class:on={showPins} bind:this={pinsEl} aria-label="Объекты на карте">
@@ -211,6 +227,16 @@
 <p class="ticker" class:off={page.url.pathname !== '/'} aria-hidden="true">
 	<span bind:this={coordsEl}>43.20° N · 27.91° E</span> · Варна {clock}
 </p>
+
+{#if showPins && stage.webgl}
+	<div class="mapctl">
+		{#if stage.explore}
+			<button onclick={() => { stage.explore = false; sceneRef.api?.resetView(); }}>Вернуть общий вид</button>
+		{:else}
+			<span>Тяните карту, колесо — ближе{matchMediaCoarse ? '' : ' · правая кнопка — поворот'}</span>
+		{/if}
+	</div>
+{/if}
 
 {#if showSkip}
 	<button class="skip" onclick={() => sceneRef.api?.skipIntro()}>Пропустить</button>
@@ -257,6 +283,40 @@
 	}
 	.towns.on {
 		opacity: 1;
+	}
+	.mapctl {
+		position: fixed;
+		left: 50%;
+		bottom: 20px;
+		translate: -50% 0;
+		z-index: 6;
+		font-size: 12px;
+		color: var(--muted);
+		white-space: nowrap;
+	}
+	.mapctl button {
+		color: var(--ink);
+		border: 1px solid var(--line);
+		background: rgba(3, 9, 13, 0.55);
+		backdrop-filter: blur(6px);
+		padding: 7px 12px;
+		border-radius: 2px;
+		font-size: 13px;
+	}
+	.mapctl button:hover {
+		border-color: var(--accent);
+	}
+	.towns .t1 {
+		font-size: 12.5px;
+		letter-spacing: 0.24em;
+		color: rgba(236, 239, 232, 0.8);
+		font-weight: 500;
+	}
+	.towns .t3 {
+		text-transform: none;
+		letter-spacing: 0.04em;
+		font-style: italic;
+		font-size: 12px;
 	}
 	.towns span {
 		position: absolute;
@@ -421,6 +481,16 @@
 		display: none;
 	}
 	@media (max-width: 760px) {
+		.mapctl {
+			left: auto;
+			right: var(--gutter);
+			translate: none;
+			bottom: auto;
+			top: 64px;
+		}
+		.mapctl span {
+			display: none;
+		}
 		.ticker {
 			display: none;
 		}

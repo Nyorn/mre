@@ -5,7 +5,7 @@
 	let { data } = $props();
 	const words = ['Дом', 'на', 'первой', 'линии'];
 	const listOn = $derived(stage.phase === 'over' || !stage.webgl);
-	const heroOn = $derived(['intro', 'turn', 'over'].includes(stage.phase) || !stage.webgl);
+	const heroOn = $derived((['intro', 'turn', 'over'].includes(stage.phase) && !stage.explore) || !stage.webgl);
 	$effect(() => {
 		stage.dim = 0;
 	});

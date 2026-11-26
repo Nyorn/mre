@@ -5,7 +5,9 @@ export const stage = $state({
 	ready: false,
 	webgl: true,
 	/** 0..1 darkening over the scene for text-heavy pages */
-	dim: 0
+	dim: 0,
+	/** user is exploring the map with the free camera */
+	explore: false
 });
 
 /** Imperative handle to the scene API (set by <Stage>). */
