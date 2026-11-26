@@ -133,6 +133,7 @@
 				.then((api) => {
 					if (disposed) return api.destroy();
 					sceneRef.api = api;
+					if (import.meta.env.DEV) window.__se = { api, stage };
 					canvas.addEventListener('webglcontextlost', () => {
 						stage.webgl = false;
 						stage.phase = 'over';
