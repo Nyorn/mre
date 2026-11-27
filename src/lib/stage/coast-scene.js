@@ -211,16 +211,16 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           base=mix(base,forest,smoothstep(.45,.7,vary)*smoothstep(30.,120.,hm));
           base=mix(base,ridge,smoothstep(240.,520.,hm));
           base*=.85+.3*vary;
-          vec2 lu=vec2(0.);
+          vec3 lu=vec3(0.);
           #ifndef SKIRT
-          lu=texture2D(uLU,uv).rg*uHasLU;
+          lu=texture2D(uLU,uv).rgb*uHasLU;
           #endif
           // beaches: bright sand ribbon
           base=mix(base,vec3(.78,.66,.48),smoothstep(.15,.6,lu.g)*.9);
           // built-up: pale limestone with a faint block grain when close
           float blocks=noise(vW.xz*26.)*near;
           vec3 town=vec3(.50,.45,.39)*(.85+.3*blocks);
-          base=mix(base,town,smoothstep(.2,.7,lu.r)*mix(.4,.85,near));
+          base=mix(base,town,smoothstep(.2,.7,lu.r)*mix(.3,.5,near)*(1.+.7*smoothstep(.4,.6,lu.b)));
           float sh=1.;
           #if SH_STEPS > 0
           { float lxz=max(length(uSun.xz),1e-3); vec2 dUV=vec2(uSun.x/uKM.x,-uSun.z/uKM.y)/lxz; float slope=uSun.y/lxz;
@@ -235,6 +235,12 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float clFade=(1.-smoothstep(.25,.6,fw))*smoothstep(8.,30.,hm);
           c=mix(c, c*1.35+vec3(.02,.018,.012), (1.-min(f,1.))*.32*clFade);
           c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*.10*(1.-smoothstep(-.02,.16,uSunElev));
+          { // town boundaries: soft warm fill + crisp glowing outline
+            float fb=max(fwidth(lu.b),1e-4);
+            float edge=1.-smoothstep(0.,fb*1.6,abs(lu.b-.5));
+            float dash=.55+.45*step(.5,fract((vW.x+vW.z)*1.4));
+            c=mix(c,c*1.12+vec3(.03,.02,.0),smoothstep(.45,.6,lu.b)*.5);
+            c+=vec3(1.,.78,.45)*edge*dash*.55*(1.-smoothstep(120.,320.,camD)); }
           gl_FragColor=vec4(tone(fogged(c,vW,.0029)),cov);
         }`
 		});
@@ -681,7 +687,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	// ---------- free map camera (home only) ----------
 	const ctrl = { tgt: new THREE.Vector3(), dist: 1, az: 0, pol: 1, touched: false };
 	const cur = { tgt: new THREE.Vector3(), dist: 1, az: 0, pol: 1 };
-	const LIM = { dMin: 18, dMax: 320, pMin: 0.3, pMax: 1.28, x: KW * 0.46, z: KH * 0.46 };
+	const LIM = { dMin: 10, dMax: 320, pMin: 0.08, pMax: 1.4, x: KW * 0.46, z: KH * 0.46 };
 	function ctrlFrom(pos, tgt) {
 		const o = pos.clone().sub(tgt), d = o.length();
 		ctrl.tgt.copy(tgt).setY(0);
@@ -706,6 +712,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		target.copy(cur.tgt);
 		const sp = Math.sin(cur.pol);
 		camera.position.set(cur.tgt.x + cur.dist * sp * Math.sin(cur.az), cur.tgt.y + cur.dist * Math.cos(cur.pol), cur.tgt.z + cur.dist * sp * Math.cos(cur.az));
+		const gh = Math.max(0, heightUV(camera.position.x / KW + 0.5, camera.position.z / KH + 0.5));
+		if (camera.position.y < gh + 1.5) camera.position.y = gh + 1.5;
 	}
 	const touch = () => {
 		if (!ctrl.touched) {
@@ -853,6 +861,21 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			setPhase('object');
 		},
 		setPointer(x, y) { pointer.x = x; pointer.y = y; },
+		orbit(dAz, dPol) {
+			if (phase !== 'over') return;
+			ctrl.az += dAz;
+			ctrl.pol += dPol;
+			clampCtrl();
+			touch();
+		},
+		flyToPlace(lat, lon) {
+			if (phase !== 'over') return;
+			ctrl.tgt.copy(world(lat, lon)).setY(0);
+			ctrl.dist = Math.min(ctrl.dist, 42);
+			ctrl.pol = Math.min(ctrl.pol, 0.95);
+			clampCtrl();
+			touch();
+		},
 		setControls(v) {
 			controlsOn = v;
 			canvas.style.cursor = v && phase === 'over' ? 'grab' : '';
@@ -879,7 +902,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	const pointer = { x: 0, y: 0 };
 	const look = new THREE.Vector3(), ndc = new THREE.Vector3(), fwd = new THREE.Vector3();
 	let paused = false, last = 0;
-	const frame = { towns: landmarks.map((l) => ({ name: l.name, tier: l.tier, x: 0, y: 0, d: 0, vis: false })), pins: marks.map((m) => ({ slug: m.slug, x: 0, y: 0, vis: false })), tape: { x: 0, y: 0, vis: false }, horizonY: 0, latlon: [0, 0] };
+	const frame = { view: { az: 0, pol: 0 }, towns: landmarks.map((l) => ({ name: l.name, tier: l.tier, x: 0, y: 0, d: 0, vis: false })), pins: marks.map((m) => ({ slug: m.slug, x: 0, y: 0, vis: false })), tape: { x: 0, y: 0, vis: false }, horizonY: 0, latlon: [0, 0] };
 	function tick(time) {
 		const dt = Math.min(0.1, time - last);
 		last = time;
@@ -934,6 +957,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		ndc.copy(camera.position).addScaledVector(fwd, 1500).setY(0).project(camera);
 		frame.horizonY = (-ndc.y * 0.5 + 0.5) * H;
 		frame.latlon = toLatLon(camera.position);
+		frame.view.az = cur.az;
+		frame.view.pol = cur.pol;
 		onFrame?.(frame);
 	}
 	function resize() {

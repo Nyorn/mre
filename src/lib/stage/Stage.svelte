@@ -2,8 +2,16 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { stage, sceneRef } from './state.svelte.js';
-	import { formatDistance } from '#lib/geo/math.js';
-	import { PLACES } from '#lib/geo/places.js';
+	import { formatDistance, metersBetween } from '#lib/geo/math.js';
+	import { PLACES, AIRPORTS } from '#lib/geo/places.js';
+
+	const placeInfo = PLACES.map((pl) => {
+		const ap = AIRPORTS.map((a) => ({ a, m: metersBetween([pl.lat, pl.lon], [a.lat, a.lon]) })).sort((x, y) => x.m - y.m)[0];
+		return { ...pl, airport: `${Math.max(1, Math.round(ap.m / 1000))} км до аэропорта ${ap.a.name}` };
+	});
+	let hover = $state(-1);
+	let cardEl = $state();
+	let compassEl = $state();
 
 	let { properties } = $props();
 
@@ -47,6 +55,11 @@
 	let n = 0;
 	function onFrame(frame) {
 		if (showPins) layoutPins(frame);
+		if (compassEl) compassEl.style.setProperty('--az', `${180 - (frame.view.az * 180) / Math.PI}deg`);
+		if (cardEl && hover >= 0) {
+			const f = frame.towns[hover];
+			cardEl.style.transform = `translate(${Math.min(f.x + 14, innerWidth - 300)}px, ${f.y + 14}px)`;
+		}
 		if (townsEl && stage.phase === 'over') {
 			const placed = [];
 			for (let i = 0; i < frame.towns.length; i++) {
@@ -207,9 +220,27 @@
 	aria-hidden="true"
 ></div>
 
-<div class="towns" class:on={showPins} bind:this={townsEl} aria-hidden="true">
-	{#each PLACES as t}<span class="t{t.tier}">{t.name}</span>{/each}
+<div class="towns" class:on={showPins} bind:this={townsEl}>
+	{#each placeInfo as t, i}<button
+			class="t{t.tier}"
+			tabindex={showPins ? 0 : -1}
+			onpointerenter={() => (hover = i)}
+			onpointerleave={() => (hover = -1)}
+			onfocus={() => (hover = i)}
+			onblur={() => (hover = -1)}
+			onclick={() => sceneRef.api?.flyToPlace(t.lat, t.lon)}>{t.name}</button
+		>{/each}
 </div>
+
+{#if showPins && hover >= 0}
+	{@const t = placeInfo[hover]}
+	<aside class="card" bind:this={cardEl} aria-live="polite">
+		<small>{t.kind}</small>
+		<h3>{t.name}</h3>
+		<p>{t.about}</p>
+		<small class="ap">✈ {t.airport}</small>
+	</aside>
+{/if}
 
 <nav class="pins" class:on={showPins} bind:this={pinsEl} aria-label="Объекты на карте">
 	{#each properties as p (p.slug)}
@@ -233,8 +264,42 @@
 		{#if stage.explore}
 			<button onclick={() => { stage.explore = false; sceneRef.api?.resetView(); }}>Вернуть общий вид</button>
 		{:else}
-			<span>Тяните карту, колесо — ближе{matchMediaCoarse ? '' : ' · правая кнопка — поворот'}</span>
+			<span>Тяните карту · колесо — ближе · компас справа — ракурс</span>
 		{/if}
+	</div>
+	<div class="compass" aria-label="Ракурс">
+		<button aria-label="Наклонить выше" onclick={() => sceneRef.api?.orbit(0, -0.18)}>▲</button>
+		<div class="row">
+			<button aria-label="Повернуть влево" onclick={() => sceneRef.api?.orbit(-0.4, 0)}>⟲</button>
+			<div
+				class="dial"
+				bind:this={compassEl}
+				role="slider"
+				tabindex="0"
+				aria-valuenow="0"
+				aria-label="Перетащите, чтобы вращать и наклонять"
+				onpointerdown={(e) => {
+					e.currentTarget.setPointerCapture(e.pointerId);
+					let lx = e.clientX, ly = e.clientY;
+					const mv = (ev) => {
+						sceneRef.api?.orbit((ev.clientX - lx) * 0.012, (ly - ev.clientY) * -0.008);
+						lx = ev.clientX;
+						ly = ev.clientY;
+					};
+					const up = () => {
+						e.currentTarget?.removeEventListener('pointermove', mv);
+						removeEventListener('pointerup', up);
+					};
+					e.currentTarget.addEventListener('pointermove', mv);
+					addEventListener('pointerup', up);
+				}}
+				ondblclick={() => { stage.explore = false; sceneRef.api?.resetView(); }}
+			>
+				<span class="n">С</span>
+			</div>
+			<button aria-label="Повернуть вправо" onclick={() => sceneRef.api?.orbit(0.4, 0)}>⟳</button>
+		</div>
+		<button aria-label="Наклонить ниже" onclick={() => sceneRef.api?.orbit(0, 0.18)}>▼</button>
 	</div>
 {/if}
 
@@ -306,6 +371,105 @@
 	.mapctl button:hover {
 		border-color: var(--accent);
 	}
+	.compass {
+		position: fixed;
+		left: var(--gutter);
+		bottom: 64px;
+		z-index: 6;
+		display: grid;
+		justify-items: center;
+		gap: 4px;
+		user-select: none;
+	}
+	.compass .row {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.compass button {
+		width: 28px;
+		height: 28px;
+		color: var(--ink);
+		background: rgba(3, 9, 13, 0.5);
+		border: 1px solid var(--line);
+		border-radius: 50%;
+		font-size: 12px;
+		backdrop-filter: blur(6px);
+	}
+	.compass button:hover {
+		border-color: var(--accent);
+	}
+	.dial {
+		width: 58px;
+		height: 58px;
+		border-radius: 50%;
+		border: 1px solid var(--line);
+		background:
+			repeating-conic-gradient(from 0deg, rgba(236, 239, 232, 0.35) 0 1deg, transparent 1deg 30deg),
+			radial-gradient(circle, rgba(3, 9, 13, 0.35) 55%, rgba(3, 9, 13, 0.6));
+		backdrop-filter: blur(6px);
+		cursor: grab;
+		position: relative;
+		rotate: var(--az, 0deg);
+		touch-action: none;
+	}
+	.dial .n {
+		position: absolute;
+		left: 50%;
+		top: 3px;
+		translate: -50% 0;
+		font-size: 10px;
+		font-weight: 600;
+		color: var(--accent);
+	}
+	.card {
+		position: fixed;
+		left: 0;
+		top: 0;
+		z-index: 7;
+		width: 280px;
+		padding: 14px 16px;
+		background: rgba(6, 13, 18, 0.82);
+		border: 1px solid var(--line);
+		border-left: 2px solid var(--accent);
+		backdrop-filter: blur(10px);
+		pointer-events: none;
+		animation: cardIn 0.25s var(--ease);
+	}
+	@keyframes cardIn {
+		from {
+			opacity: 0;
+			translate: 0 6px;
+		}
+	}
+	.card small {
+		font-size: 10.5px;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--muted);
+	}
+	.card h3 {
+		margin: 4px 0 6px;
+		font-size: 20px;
+		font-weight: 400;
+		color: var(--ink);
+	}
+	.card p {
+		margin: 0 0 10px;
+		font-size: 13.5px;
+		line-height: 1.45;
+		color: rgba(236, 239, 232, 0.82);
+	}
+	.card .ap {
+		letter-spacing: 0.04em;
+		text-transform: none;
+		color: var(--accent);
+	}
+	.towns button:hover,
+	.towns button:focus-visible {
+		color: var(--accent);
+		outline: none;
+	}
 	.towns .t1 {
 		font-size: 12.5px;
 		letter-spacing: 0.24em;
@@ -318,7 +482,13 @@
 		font-style: italic;
 		font-size: 12px;
 	}
-	.towns span {
+	.towns button {
+		pointer-events: auto;
+		cursor: pointer;
+		background: none;
+		border: 0;
+		padding: 4px 6px;
+		font-family: inherit;
 		position: absolute;
 		left: 0;
 		top: 0;

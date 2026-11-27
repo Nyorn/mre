@@ -101,10 +101,26 @@ if os.path.exists(LU):
             pts = ring(g)
             if len(pts) < 3: continue
             (db if tags.get("natural") == "beach" else du).polygon(pts, fill=255); n += 1
+    # town zones: built-up polygons near named towns, closed and smoothed -> boundary at 0.5
+    import re, math
+    src = open(os.path.join(HERE, "..", "src", "lib", "geo", "places.js"), encoding="utf-8").read()
+    named = [(float(a), float(b), int(c)) for a, b, c in re.findall(r"lat: ([\d.]+), lon: ([\d.]+), tier: (\d)", src) if int(c) < 3]
+    zone = Image.new("L", (LW, LH), 0)
+    dz = ImageDraw.Draw(zone)
+    kpx = LW / km_w
+    for el in json.load(open(LU, encoding="utf-8"))["elements"]:
+        if el.get("tags", {}).get("natural") == "beach" or el["type"] != "way" or not el.get("geometry"): continue
+        g = el["geometry"]; la = sum(p["lat"] for p in g) / len(g); lo = sum(p["lon"] for p in g) / len(g)
+        for tl, tn, tier in named:
+            dkm = math.hypot((la - tl) * 111.2, (lo - tn) * 111.2 * math.cos(math.radians(tl)))
+            if dkm < (8.5 if tier == 1 else 3.2):
+                pts = ring(g)
+                if len(pts) > 2: dz.polygon(pts, fill=255)
+                break
+    zone = zone.filter(ImageFilter.MaxFilter(15)).filter(ImageFilter.MinFilter(9)).filter(ImageFilter.GaussianBlur(5))
     urban = urban.filter(ImageFilter.GaussianBlur(0.8))
     beach = beach.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
-    zero = Image.new("L", (LW, LH), 0)
-    Image.merge("RGB", (urban, beach, zero)).save(os.path.join(OUT, "landuse.png"), optimize=True)
+    Image.merge("RGB", (urban, beach, zone)).save(os.path.join(OUT, "landuse.png"), optimize=True)
     meta["landuse"] = [LW, LH]
     json.dump({"meta": meta, "coast": coast}, open(os.path.join(OUT, "geo.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     print("landuse polygons:", n)
