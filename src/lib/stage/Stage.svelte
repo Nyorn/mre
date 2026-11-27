@@ -268,9 +268,10 @@
 {#if showPins && stage.webgl}
 	<div class="mapctl">
 		{#if stage.explore}
-			<button onclick={() => { stage.explore = false; sceneRef.api?.resetView(); }}>Вернуть общий вид</button>
+			<span>Колесо — ближе · правая кнопка — поворот</span>
+			<button onclick={() => { stage.explore = false; sceneRef.api?.resetView(); }}>Вернуться к истории</button>
 		{:else}
-			<span>Колесо — время суток · тяните карту · Ctrl + колесо — ближе · компас — ракурс</span>
+			<span>Колесо — время суток · потяните карту, чтобы исследовать её самому</span>
 		{/if}
 	</div>
 	<div class="compass" aria-label="Ракурс">
@@ -306,6 +307,10 @@
 			<button aria-label="Повернуть вправо" onclick={() => sceneRef.api?.orbit(0.4, 0)}>⟳</button>
 		</div>
 		<button aria-label="Наклонить ниже" onclick={() => sceneRef.api?.orbit(0, 0.18)}>▼</button>
+		<div class="row zoom">
+			<button aria-label="Ближе" onclick={() => sceneRef.api?.zoom(0.7)}>+</button>
+			<button aria-label="Дальше" onclick={() => sceneRef.api?.zoom(1.4)}>−</button>
+		</div>
 	</div>
 {/if}
 
@@ -364,6 +369,10 @@
 		font-size: 12px;
 		color: var(--muted);
 		white-space: nowrap;
+		display: flex;
+		gap: 14px;
+		align-items: center;
+		text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
 	}
 	.mapctl button {
 		color: var(--ink);
@@ -386,6 +395,13 @@
 		justify-items: center;
 		gap: 4px;
 		user-select: none;
+	}
+	.compass .zoom {
+		margin-top: 6px;
+	}
+	.compass .zoom button {
+		font-size: 16px;
+		line-height: 1;
 	}
 	.compass .row {
 		display: flex;

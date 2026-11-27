@@ -51,7 +51,7 @@
 
 <svelte:window onscroll={onScroll} onresize={onScroll} />
 
-<div class="story" class:on={stage.phase === 'over' || !stage.webgl}>
+<div class="story" class:on={(stage.phase === 'over' && !stage.explore) || !stage.webgl}>
 	<section class="chapter c1" aria-labelledby="c1">
 		<small>День · побережье</small>
 		<h2 id="c1">378 километров моря</h2>

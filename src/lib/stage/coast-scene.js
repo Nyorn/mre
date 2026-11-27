@@ -67,15 +67,15 @@ vec3 fogged(vec3 c, vec3 wpos, float k){
 `;
 
 export async function createCoastScene({ canvas, properties, reduce = false, mobile = false, onFrame, onPhase, onInteract }) {
-	const [geo, img] = await Promise.all([
-		fetch('/geo/geo.json').then((r) => r.json()),
-		new Promise((res, rej) => {
-			const i = new Image();
-			i.onload = () => res(i);
-			i.onerror = rej;
-			i.src = '/geo/terrain.png';
-		})
-	]);
+	// geo.json is revalidated every load; its version stamp busts the long-cached images
+	const geo = await fetch('/geo/geo.json', { cache: 'no-cache' }).then((r) => r.json());
+	const ver = geo.meta.v ? `?v=${geo.meta.v}` : '';
+	const img = await new Promise((res, rej) => {
+		const i = new Image();
+		i.onload = () => res(i);
+		i.onerror = rej;
+		i.src = '/geo/terrain.png' + ver;
+	});
 	const M = geo.meta;
 	const KW = M.km[0], KH = M.km[1];
 	const BOT = 13, EXD = 22; // model base depth, bathymetry exaggeration
@@ -84,7 +84,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				const i = new Image();
 				i.onload = () => res(i);
 				i.onerror = () => res(null);
-				i.src = '/geo/landuse.png';
+				i.src = '/geo/landuse.png' + ver;
 			})
 		: null;
 	const proj = projection(M);
@@ -249,7 +249,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           // built-up: pale limestone with a faint block grain when close
           float blocks=noise(vW.xz*26.)*near;
           vec3 town=vec3(.50,.45,.39)*(.85+.3*blocks);
-          base=mix(base,town,smoothstep(.2,.7,lu.r)*min(.38,mix(.05,.12,near)*(1.+4.*smoothstep(.4,.6,lu.b))));
+          base=mix(base,town,smoothstep(.2,.7,lu.r)*min(.26,mix(.04,.1,near)*(1.+3.*smoothstep(.4,.6,lu.b))));
           float sh=1.;
           #if SH_STEPS > 0
           { float lxz=max(length(uSun.xz),1e-3); vec2 dUV=vec2(uSun.x/uKM.x,-uSun.z/uKM.y)/lxz; float slope=uSun.y/lxz;
@@ -265,7 +265,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           c=mix(c, c*1.35+vec3(.02,.018,.012), (1.-min(f,1.))*.32*clFade);
           { float ng=1.-smoothstep(-.02,.16,uSunElev);
             float grain=noise(vW.xz*38.)*noise(vW.xz*11.+3.);
-            c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*(.10+.9*grain)*ng*mix(.3,1.,smoothstep(.4,.6,lu.b));
+            c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*(.10+.9*grain)*ng*mix(.12,1.,smoothstep(.4,.6,lu.b));
             c+=vec3(1.,.58,.28)*smoothstep(.2,.75,lu.b)*.14*ng; }
           { // town boundaries: soft warm fill + crisp glowing outline
             float fb=max(fwidth(lu.b),1e-4);
@@ -609,13 +609,13 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				blending: THREE.AdditiveBlending,
 				vertexShader: `attribute float side,dist; attribute vec2 nrm; varying float vS,vD,vCam;
           void main(){ vS=side; vD=dist; vec4 w=modelMatrix*vec4(position,1.);
-            float d=length(w.xyz-cameraPosition); vCam=d; w.xz+=nrm*side*clamp(d*.0034,.02,.8); w.y+=d*.002;
+            float d=length(w.xyz-cameraPosition); vCam=d; w.xz+=nrm*side*clamp(d*.0026,.015,.6); w.y+=d*.002;
             gl_Position=projectionMatrix*viewMatrix*w; }`,
 				fragmentShader: `uniform float uTime,uSunElev,uRibbon; varying float vS,vD,vCam;
           void main(){ float core=exp(-vS*vS*6.);
             float dash=smoothstep(.15,.3,fract(vD*.9-uTime*.15))*(1.-smoothstep(.75,.9,fract(vD*.9-uTime*.15)));
             float ng=1.-smoothstep(-.02,.2,uSunElev);
-            vec3 c=mix(vec3(1.,.93,.8),vec3(1.,.72,.42),ng)*core*(.25+.75*dash)*(.55+.6*ng)*uRibbon;
+            vec3 c=mix(vec3(1.,.93,.8),vec3(1.,.72,.42),ng)*core*(.25+.75*dash)*(.28+.85*ng)*uRibbon;
             gl_FragColor=vec4(c,1.); }`
 			})
 		);
@@ -729,7 +729,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			for (let k = 0; k < 400000 && seed.length < want; k++) {
 				const u = 0.25 + rand() * 0.75, v = rand();
 				const x = Math.floor(u * (luImg.width - 1)), y = Math.floor(v * (luImg.height - 1));
-				if (ld[(y * luImg.width + x) * 4] < 140) continue;
+				const o = (y * luImg.width + x) * 4;
+				if (ld[o] < 140 || (ld[o + 2] < 100 && rand() > 0.22)) continue; // villages: sparse
 				const h = heightUV(u, v);
 				if (h <= 0) continue;
 				pos.push((u - 0.5) * KW, h + 0.09, (v - 0.5) * KH);
@@ -774,7 +775,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			`varying vec2 vUv; varying vec3 vW;
       void main(){ float x=vUv.x, y=(vUv.y-.5)*2.;
         float a=pow(1.-x,1.4)*exp(-y*y*(3.+x*-2.))*(.35+.65*smoothstep(0.,.04,x));
-        float dawn=1.-smoothstep(.02,.14,uSunElev);
+        float dawn=1.-smoothstep(-.03,.05,uSunElev);
         float dc=length(vW-cameraPosition); a*=dawn*.55*exp(-dc*.006)*smoothstep(4.,14.,dc);
         gl_FragColor=vec4(vec3(1.,.86,.62)*a,1.); }`
 	});
@@ -1033,8 +1034,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		ctrl.tgt.x = Math.min(LIM.x, Math.max(-LIM.x, ctrl.tgt.x));
 		ctrl.tgt.z = Math.min(LIM.z, Math.max(-LIM.z, ctrl.tgt.z));
 	}
-	function applyCtrl(dt) {
-		const k = 1 - Math.exp(-dt * 9);
+	function applyCtrl(dt, rate = 9) {
+		const k = 1 - Math.exp(-dt * rate);
 		cur.tgt.lerp(ctrl.tgt, k);
 		cur.dist += (ctrl.dist - cur.dist) * k;
 		cur.az += (ctrl.az - cur.az) * k;
@@ -1107,7 +1108,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		if (!ptrs.size) canvas.style.cursor = canUse() ? 'grab' : '';
 	}
 	function onWheel(e) {
-		if (!canUse() || !(e.ctrlKey || e.metaKey)) return; // plain wheel scrolls the day story
+		if (!canUse() || !(e.ctrlKey || e.metaKey || ctrl.touched)) return; // story mode: plain wheel scrolls the day
 		e.preventDefault();
 		ctrl.dist *= Math.exp(Math.max(-60, Math.min(60, e.deltaY)) * 0.0022);
 		clampCtrl();
@@ -1147,6 +1148,42 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		[1, -0.2, Math.PI - 0.15]
 	];
 	let dayP = 0;
+	const STORY = [
+		[0, POSES.over],
+		[0.34, mobile
+			? { pos: world(42.95, 28.3).setY(60), tgt: world(43.3, 27.95).setY(0) }
+			: { pos: world(43.1, 28.22).setY(26), tgt: world(43.3, 27.97).setY(0) }],
+		[0.68, mobile
+			? { pos: world(42.82, 28.35).setY(30), tgt: world(42.55, 27.6).setY(0) }
+			: { pos: world(42.8, 28.22).setY(13), tgt: world(42.56, 27.6).setY(0) }],
+		[1, mobile
+			? { pos: world(41.9, 29.1).setY(330), tgt: world(42.9, 27.9).setY(-10) }
+			: { pos: world(42.05, 28.95).setY(150), tgt: world(42.95, 27.95).setY(-10) }]
+	];
+	const _sp = new THREE.Vector3(), _st = new THREE.Vector3();
+	let storyShift = 0;
+	function storyPose(p) {
+		for (let i = 1; i < STORY.length; i++) {
+			const [p0, a] = STORY[i - 1], [p1, b] = STORY[i];
+			if (p <= p1) {
+				let k = (p - p0) / (p1 - p0);
+				k = k * k * (3 - 2 * k);
+				_sp.lerpVectors(a.pos, b.pos, k);
+				_st.lerpVectors(a.tgt, b.tgt, k);
+				return;
+			}
+		}
+	}
+	function ctrlAim(pos, tgt) {
+		const o = pos.clone().sub(tgt), d = o.length();
+		ctrl.tgt.copy(tgt);
+		ctrl.dist = d;
+		ctrl.pol = Math.acos(Math.min(1, o.y / d));
+		let az = Math.atan2(o.x, o.z);
+		while (az - cur.az > Math.PI) az -= Math.PI * 2;
+		while (az - cur.az < -Math.PI) az += Math.PI * 2;
+		ctrl.az = az;
+	}
 	function dayAt(p) {
 		for (let i = 1; i < DAY_KEYS.length; i++) {
 			const [p0, e0, a0] = DAY_KEYS[i - 1], [p1, e1, a1] = DAY_KEYS[i];
@@ -1160,6 +1197,12 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	}
 
 	const api = {
+		zoom(f) {
+			if (phase !== 'over') return;
+			ctrl.dist *= f;
+			clampCtrl();
+			touch();
+		},
 		setDay(p) {
 			dayP = Math.min(1, Math.max(0, p));
 		},
@@ -1243,10 +1286,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			canvas.style.cursor = v && phase === 'over' ? 'grab' : '';
 		},
 		async resetView() {
-			ctrl.touched = false;
-			setPhase('flying');
-			await camTo(POSES.over, 1.6);
-			setPhase('over');
+			ctrl.touched = false; // the story camera glides back to the pose for the current time of day
 		},
 		setPaused(v) { paused = v; },
 		destroy() {
@@ -1296,9 +1336,20 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		updateGulls(dt);
 		updateSea(dt);
 		for (const l of lighthouses) l.rotation.y = time * 0.9 + l.userData.phase;
-		if (phase === 'over' && !tween?.isActive()) applyCtrl(dt);
+		const story = phase === 'over' && controlsOn && !ctrl.touched && !tween?.isActive();
+		if (story) {
+			storyPose(dayP);
+			ctrlAim(_sp, _st);
+		}
+		if (phase === 'over' && !tween?.isActive()) applyCtrl(dt, story ? 2.2 : 9);
 		const drift = phase === 'over' && !reduce && !ctrl.touched ? 1 : 0;
 		look.copy(target).add(new THREE.Vector3(pointer.x * 3 * drift, -pointer.y * 2 * drift, 0));
+		storyShift += ((story && !mobile ? 1 : 0) - storyShift) * (1 - Math.exp(-dt * 2));
+		if (storyShift > 0.001) {
+			const fwd = target.clone().sub(camera.position), d = fwd.length();
+			const right = fwd.cross(camera.up).normalize();
+			look.addScaledVector(right, -0.2 * d * storyShift);
+		}
 		camera.lookAt(look);
 		const nearP = Math.min(6, Math.max(0.05, camera.position.y * 0.12));
 		if (Math.abs(nearP - camera.near) > 1e-3) {

@@ -74,6 +74,8 @@ places = {"Балчик": (43.405, 28.165), "Варна": (43.204, 27.91), "Бя
           "Бургас": (42.505, 27.468), "Созополь": (42.418, 27.696), "Приморско": (42.268, 27.758),
           "Калиакра": (43.361, 28.466), "Эмине": (42.70, 27.90)}
 meta["places"] = {k: proj(*v) for k, v in places.items()}
+import time as _t
+meta["v"] = int(_t.time())
 json.dump({"meta": meta, "coast": coast}, open(os.path.join(OUT, "geo.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
 print(meta, sum(len(c) for c in coast))
 
