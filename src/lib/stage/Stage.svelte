@@ -142,6 +142,11 @@
 		routeChanged(path, first);
 	});
 
+	$effect(() => {
+		const d = stage.day;
+		if (stage.ready) sceneRef.api?.setDay(d);
+	});
+
 	onMount(() => {
 		const fmt = new Intl.DateTimeFormat('ru-RU', { timeZone: 'Europe/Sofia', hour: '2-digit', minute: '2-digit' });
 		const tickClock = () => (clock = fmt.format(new Date()));
@@ -264,7 +269,7 @@
 		{#if stage.explore}
 			<button onclick={() => { stage.explore = false; sceneRef.api?.resetView(); }}>Вернуть общий вид</button>
 		{:else}
-			<span>Тяните карту · колесо — ближе · компас справа — ракурс</span>
+			<span>Колесо — время суток · тяните карту · Ctrl + колесо — ближе · компас — ракурс</span>
 		{/if}
 	</div>
 	<div class="compass" aria-label="Ракурс">

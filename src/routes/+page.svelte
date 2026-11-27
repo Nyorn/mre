@@ -5,9 +5,30 @@
 	let { data } = $props();
 	const words = ['Дом', 'на', 'первой', 'линии'];
 	const listOn = $derived(stage.phase === 'over' || !stage.webgl);
-	const heroOn = $derived((['intro', 'turn', 'over'].includes(stage.phase) && !stage.explore) || !stage.webgl);
+	let scrolled = $state(0);
+	const heroOn = $derived(
+		((['intro', 'turn', 'over'].includes(stage.phase) && !stage.explore) || !stage.webgl) && scrolled < 0.08
+	);
+	const DAY = [
+		{ name: 'Рассвет', time: '06:10', at: 0 },
+		{ name: 'День', time: '13:00', at: 0.34 },
+		{ name: 'Закат', time: '19:40', at: 0.68 },
+		{ name: 'Ночь', time: '23:30', at: 1 }
+	];
+	const active = $derived(DAY.reduce((b, d, i) => (Math.abs(d.at - scrolled) < Math.abs(DAY[b].at - scrolled) ? i : b), 0));
+	function onScroll() {
+		const max = document.documentElement.scrollHeight - innerHeight;
+		scrolled = max > 0 ? Math.min(1, scrollY / max) : 0;
+		stage.day = scrolled;
+	}
+	function jump(at) {
+		const max = document.documentElement.scrollHeight - innerHeight;
+		scrollTo({ top: at * max, behavior: 'smooth' });
+	}
 	$effect(() => {
 		stage.dim = 0;
+		onScroll();
+		return () => (stage.day = 0);
 	});
 </script>
 
@@ -28,7 +49,42 @@
 	<p>Несколько объектов на болгарском побережье. У каждого честно измерено расстояние до воды.</p>
 </section>
 
-<section class="index" class:on={listOn} id="objects" aria-labelledby="objh">
+<svelte:window onscroll={onScroll} onresize={onScroll} />
+
+<div class="story" class:on={stage.phase === 'over' || !stage.webgl}>
+	<section class="chapter c1" aria-labelledby="c1">
+		<small>День · побережье</small>
+		<h2 id="c1">378 километров моря</h2>
+		<p>
+			От Дуранкулака на севере до Резово у турецкой границы. Скалы и тихие бухты на севере, длинные песчаные пляжи на
+			юге. Мы берём в работу только то, что стоит у воды.
+		</p>
+	</section>
+	<section class="chapter c2" aria-labelledby="c2">
+		<small>Закат · метраж</small>
+		<h2 id="c2">Честное расстояние до воды</h2>
+		<p>
+			«Первая линия» в объявлениях часто значит «где-то недалеко». Мы меряем путь от дома до реальной береговой линии
+			по картам OpenStreetMap и показываем его на макете.
+		</p>
+	</section>
+	<section class="chapter c3" aria-labelledby="c3">
+		<small>Ночь · подбор</small>
+		<h2 id="c3">Огни, которые станут вашими</h2>
+		<p>Расскажите, какой берег вам ближе. Подберём объект, покажем его вживую и проведём сделку до ключей.</p>
+		<a class="cta" href="/kontakty">Подобрать объект</a>
+	</section>
+</div>
+
+<nav class="day" class:on={stage.phase === 'over' && stage.webgl && !stage.explore} aria-label="Время суток на макете">
+	{#each DAY as d, i}
+		<button class:act={i === active} onclick={() => jump(d.at)}>
+			<i></i><span>{d.name}</span><b>{d.time}</b>
+		</button>
+	{/each}
+</nav>
+
+<section class="index" class:on={listOn} class:away={scrolled > 0.08} id="objects" aria-labelledby="objh">
 	<h2 id="objh">Объекты на карте</h2>
 	<ol>
 		{#each data.properties as p (p.slug)}
@@ -44,6 +100,143 @@
 </section>
 
 <style>
+	.story {
+		position: relative;
+		z-index: 2;
+		pointer-events: none;
+		padding-top: 100vh;
+		opacity: 0;
+		transition: opacity 0.8s var(--ease);
+	}
+	.story.on {
+		opacity: 1;
+	}
+	.chapter {
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-end;
+		padding: 0 var(--gutter) clamp(110px, 16vh, 170px);
+		max-width: calc(560px + 2 * var(--gutter));
+	}
+	.chapter small {
+		font-size: 11px;
+		letter-spacing: 0.2em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	.chapter h2 {
+		margin: 12px 0 16px;
+		font-weight: 500;
+		font-size: clamp(34px, 4.6vw, 64px);
+		line-height: 1;
+		letter-spacing: -0.035em;
+		text-shadow: 0 2px 30px rgba(0, 0, 0, 0.6);
+	}
+	.chapter p {
+		font-size: 17px;
+		line-height: 1.55;
+		color: rgba(236, 239, 232, 0.85);
+		text-shadow: 0 1px 14px rgba(0, 0, 0, 0.8);
+		max-width: 470px;
+	}
+	.cta {
+		pointer-events: auto;
+		align-self: flex-start;
+		margin-top: 24px;
+		padding: 13px 20px;
+		border: 1px solid var(--accent);
+		color: var(--ink);
+		text-decoration: none;
+		background: rgba(3, 9, 13, 0.4);
+		backdrop-filter: blur(6px);
+		transition: background 0.3s;
+	}
+	.cta:hover {
+		background: rgba(255, 190, 120, 0.15);
+	}
+	.day {
+		position: fixed;
+		left: 50%;
+		top: 72px;
+		translate: -50% 0;
+		z-index: 9;
+		display: flex;
+		gap: 2px;
+		padding: 4px;
+		border: 1px solid var(--line);
+		background: rgba(3, 9, 13, 0.45);
+		backdrop-filter: blur(8px);
+		border-radius: 999px;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.6s var(--ease);
+	}
+	.day.on {
+		opacity: 1;
+		pointer-events: auto;
+	}
+	.day button {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		padding: 6px 12px;
+		border-radius: 999px;
+		border: 0;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 12.5px;
+		cursor: pointer;
+		transition:
+			background 0.4s,
+			color 0.4s;
+	}
+	.day button b {
+		display: none;
+		font-weight: 400;
+		font-variant-numeric: tabular-nums;
+		opacity: 0.7;
+	}
+	.day button i {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
+		opacity: 0.6;
+	}
+	.day button.act {
+		background: rgba(255, 190, 120, 0.14);
+		color: var(--ink);
+	}
+	.day button.act b {
+		display: inline;
+	}
+	.day button.act i {
+		background: var(--accent);
+		box-shadow: 0 0 8px var(--accent);
+		opacity: 1;
+	}
+	@media (max-width: 760px) {
+		.day {
+			top: auto;
+			bottom: 14px;
+		}
+		.day button span {
+			display: none;
+		}
+		.day button.act span {
+			display: inline;
+		}
+		.chapter {
+			padding-bottom: 90px;
+			background: linear-gradient(transparent 45%, rgba(3, 9, 13, 0.75) 80%);
+		}
+		.index.on.away {
+			opacity: 0;
+			pointer-events: none;
+		}
+	}
 	.hero {
 		position: fixed;
 		left: var(--gutter);

@@ -54,7 +54,7 @@ vec3 tone(vec3 c){ c = 1.-exp(-c*1.15); return pow(c, vec3(.95)); }
 vec3 sunColor(){ float day=smoothstep(-.10,.25,uSunElev);
   return mix(vec3(1.,.45,.22), vec3(1.05,.82,.62), day)*smoothstep(-.08,.04,uSunElev)*1.6; }
 vec3 ambColor(float ny){ float day=smoothstep(-.10,.25,uSunElev);
-  return mix(vec3(.05,.07,.11), vec3(.30,.36,.44), day)*(.55+.45*ny); }
+  return mix(vec3(.065,.09,.15), vec3(.30,.36,.44), day)*(.55+.45*ny); }
 vec3 fogged(vec3 c, vec3 wpos, float k){
   vec3 V = wpos-cameraPosition; float dist = length(V);
   return mix(c, sky(normalize(vec3(V.x,.02,V.z))), 1.-exp(-pow(dist*k*uFogScale*(1.-.62*uDio),1.6)));
@@ -123,11 +123,13 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		uFocus: { value: new THREE.Vector3() },
 		uFocusAmt: { value: 0 },
 		uDio: { value: reduce ? 1 : 0 },
+		uSunAz: { value: 0.4 },
 		uBox: { value: new THREE.Vector2(KW / 2, KH / 2) }
 	};
 	const setSun = () => {
 		const e = U.uSunElev.value;
-		U.uSun.value.set(Math.cos(e) * 0.92, Math.sin(e), Math.cos(e) * 0.39).normalize();
+		const az = U.uSunAz.value;
+		U.uSun.value.set(Math.cos(e) * Math.cos(az), Math.sin(e), Math.cos(e) * Math.sin(az)).normalize();
 	};
 	setSun();
 
@@ -861,9 +863,16 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	const ptrs = new Map();
 	let gesture = null;
 	const canUse = () => phase === 'over' && controlsOn;
-	canvas.style.touchAction = 'none';
+	canvas.style.touchAction = 'pan-y';
 	function onDown(e) {
 		if (!canUse()) return;
+		if (e.pointerType === 'touch') {
+			ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+			if (ptrs.size < 2) return; // one finger scrolls the page; two fingers drive the map
+			for (const id of ptrs.keys()) canvas.setPointerCapture?.(id);
+			gesture = 'pan';
+			return;
+		}
 		canvas.setPointerCapture(e.pointerId);
 		ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
 		gesture = e.button === 2 || e.shiftKey || e.ctrlKey ? 'rotate' : 'pan';
@@ -874,6 +883,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		const prev = ptrs.get(e.pointerId);
 		const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
 		if (ptrs.size === 1) {
+			if (e.pointerType === 'touch') return;
 			if (gesture === 'rotate') {
 				ctrl.az -= dx * 0.005;
 				ctrl.pol = ctrl.pol - dy * 0.004;
@@ -898,7 +908,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		if (!ptrs.size) canvas.style.cursor = canUse() ? 'grab' : '';
 	}
 	function onWheel(e) {
-		if (!canUse()) return;
+		if (!canUse() || !(e.ctrlKey || e.metaKey)) return; // plain wheel scrolls the day story
 		e.preventDefault();
 		ctrl.dist *= Math.exp(Math.max(-60, Math.min(60, e.deltaY)) * 0.0022);
 		clampCtrl();
@@ -930,7 +940,30 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 	addEventListener('keydown', onKey);
 
+	// ---------- time of day driven by the home scroll story ----------
+	const DAY_KEYS = [
+		[0, SUN_HOME, 0.4],
+		[0.34, 0.95, Math.PI / 2],
+		[0.68, 0.035, Math.PI - 0.35],
+		[1, -0.2, Math.PI - 0.15]
+	];
+	let dayP = 0;
+	function dayAt(p) {
+		for (let i = 1; i < DAY_KEYS.length; i++) {
+			const [p0, e0, a0] = DAY_KEYS[i - 1], [p1, e1, a1] = DAY_KEYS[i];
+			if (p <= p1) {
+				let k = (p - p0) / (p1 - p0);
+				k = k * k * (3 - 2 * k);
+				return [e0 + (e1 - e0) * k, a0 + (a1 - a0) * k];
+			}
+		}
+		return DAY_KEYS.at(-1).slice(1);
+	}
+
 	const api = {
+		setDay(p) {
+			dayP = Math.min(1, Math.max(0, p));
+		},
 		_dbg: import.meta.env.DEV ? { camera, target, ctrl, cur, POSES, ctrlFrom, U } : null,
 		phase: () => phase,
 		/** Dawn intro. Resolves when the overview is reached. */
@@ -1045,6 +1078,15 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			if (Math.abs(U.uDio.value - want) < 0.001) U.uDio.value = want;
 			walls.visible = U.uDio.value > 0.002;
 			walls.children[4].position.y = -BOT * U.uDio.value;
+		}
+		if (phase === 'over' && controlsOn && !gsap.isTweening(U.uSunElev)) {
+			const [e, a] = dayAt(dayP);
+			const k = reduce ? 1 : 1 - Math.exp(-dt * 3);
+			U.uSunElev.value += (e - U.uSunElev.value) * k;
+			U.uSunAz.value += (a - U.uSunAz.value) * k;
+			setSun();
+		} else if (phase !== 'over' && U.uSunAz.value !== 0.4 && !gsap.isTweening(U.uSunAz)) {
+			gsap.to(U.uSunAz, { value: 0.4, duration: reduce ? 0 : 1.6, onUpdate: setSun });
 		}
 		updateShips(dt);
 		updateGulls(dt);

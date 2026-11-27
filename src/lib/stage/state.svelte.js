@@ -7,7 +7,9 @@ export const stage = $state({
 	/** 0..1 darkening over the scene for text-heavy pages */
 	dim: 0,
 	/** user is exploring the map with the free camera */
-	explore: false
+	explore: false,
+	/** 0..1 home scroll story: dawn → day → sunset → night */
+	day: 0
 });
 
 /** Imperative handle to the scene API (set by <Stage>). */

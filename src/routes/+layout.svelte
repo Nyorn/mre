@@ -23,7 +23,7 @@
 
 <Stage properties={data.properties} />
 
-<header class:solid={y > 40}>
+<header class:solid={y > 40 && page.url.pathname !== '/'}>
 	<a class="mark" href="/" aria-label="Sea Estate, на главную"><i></i>Sea Estate</a>
 	<nav aria-label="Основное">
 		<ul>
