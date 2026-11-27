@@ -12,6 +12,16 @@
 	let hover = $state(-1);
 	let cardEl = $state();
 	let compassEl = $state();
+	let amb = null;
+	let soundOn = $state(false);
+	async function toggleSound() {
+		if (!amb) amb = (await import('./ambient.js')).createAmbient();
+		soundOn = amb.toggle();
+	}
+	$effect(() => {
+		const d = stage.day, path = page.url.pathname;
+		amb?.setNight(path === '/' ? Math.min(1, Math.max(0, (d - 0.72) / 0.2)) : 0);
+	});
 
 	let { properties } = $props();
 
@@ -314,6 +324,12 @@
 	</div>
 {/if}
 
+{#if stage.webgl}
+	<button class="sound" class:on={soundOn} onclick={toggleSound} aria-pressed={soundOn} aria-label={soundOn ? 'Выключить звук моря' : 'Включить звук моря'}>
+		<span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>{soundOn ? 'Звук моря' : 'Включить звук'}
+	</button>
+{/if}
+
 {#if showSkip}
 	<button class="skip" onclick={() => sceneRef.api?.skipIntro()}>Пропустить</button>
 {/if}
@@ -359,6 +375,61 @@
 	}
 	.towns.on {
 		opacity: 1;
+	}
+	.sound {
+		position: fixed;
+		left: 50%;
+		translate: -50% 0;
+		top: 22px;
+		z-index: 21;
+		display: flex;
+		align-items: center;
+		gap: 9px;
+		padding: 6px 2px;
+		border: 0;
+		background: none;
+		color: var(--muted);
+		font: inherit;
+		font-size: 12px;
+		letter-spacing: 0.06em;
+		cursor: pointer;
+		text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+	}
+	.sound:hover,
+	.sound.on {
+		color: var(--ink);
+	}
+	.bars {
+		display: flex;
+		align-items: flex-end;
+		gap: 2px;
+		height: 12px;
+	}
+	.bars i {
+		width: 2px;
+		height: 3px;
+		background: currentColor;
+	}
+	.sound.on .bars i {
+		background: var(--accent);
+		animation: eq 1.1s ease-in-out infinite alternate;
+	}
+	.sound.on .bars i:nth-child(2) {
+		animation-delay: -0.4s;
+	}
+	.sound.on .bars i:nth-child(3) {
+		animation-delay: -0.8s;
+	}
+	.sound.on .bars i:nth-child(4) {
+		animation-delay: -0.2s;
+	}
+	@keyframes eq {
+		from {
+			height: 3px;
+		}
+		to {
+			height: 12px;
+		}
 	}
 	.mapctl {
 		position: fixed;
@@ -681,6 +752,11 @@
 		display: none;
 	}
 	@media (max-width: 760px) {
+		.sound {
+			font-size: 0;
+			gap: 0;
+			top: 26px;
+		}
 		.mapctl {
 			left: auto;
 			right: var(--gutter);

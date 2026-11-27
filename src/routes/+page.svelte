@@ -161,6 +161,20 @@
 		padding: 0 var(--gutter) clamp(110px, 16vh, 170px);
 		max-width: calc(560px + 2 * var(--gutter));
 	}
+	.chapter {
+		position: relative;
+	}
+	.chapter::before {
+		content: '';
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		width: min(760px, 70vw);
+		height: 70%;
+		background: radial-gradient(80% 70% at 15% 75%, rgba(2, 6, 10, 0.62), transparent 70%);
+		pointer-events: none;
+		z-index: -1;
+	}
 	.chapter small {
 		font-size: 11px;
 		letter-spacing: 0.2em;
