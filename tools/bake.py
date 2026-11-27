@@ -117,7 +117,10 @@ if os.path.exists(LU):
                 pts = ring(g)
                 if len(pts) > 2: dz.polygon(pts, fill=255)
                 break
-    zone = zone.filter(ImageFilter.MaxFilter(15)).filter(ImageFilter.MinFilter(9)).filter(ImageFilter.GaussianBlur(5))
+    # morphological closing at 1/4 scale (~330 m px) merges blocks into one town shape
+    small = zone.resize((LW // 4, LH // 4), Image.BILINEAR).point(lambda v: 255 if v > 20 else 0)
+    small = small.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.MinFilter(7)).filter(ImageFilter.GaussianBlur(1.6))
+    zone = small.resize((LW, LH), Image.BICUBIC)
     urban = urban.filter(ImageFilter.GaussianBlur(0.8))
     beach = beach.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
     Image.merge("RGB", (urban, beach, zone)).save(os.path.join(OUT, "landuse.png"), optimize=True)

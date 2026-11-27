@@ -373,8 +373,8 @@
 	}
 	.compass {
 		position: fixed;
-		left: var(--gutter);
-		bottom: 64px;
+		right: var(--gutter);
+		top: 96px;
 		z-index: 6;
 		display: grid;
 		justify-items: center;

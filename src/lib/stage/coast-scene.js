@@ -220,7 +220,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           // built-up: pale limestone with a faint block grain when close
           float blocks=noise(vW.xz*26.)*near;
           vec3 town=vec3(.50,.45,.39)*(.85+.3*blocks);
-          base=mix(base,town,smoothstep(.2,.7,lu.r)*mix(.3,.5,near)*(1.+.7*smoothstep(.4,.6,lu.b)));
+          base=mix(base,town,smoothstep(.2,.7,lu.r)*mix(.05,.2,near)*(1.+4.*smoothstep(.4,.6,lu.b)));
           float sh=1.;
           #if SH_STEPS > 0
           { float lxz=max(length(uSun.xz),1e-3); vec2 dUV=vec2(uSun.x/uKM.x,-uSun.z/uKM.y)/lxz; float slope=uSun.y/lxz;
@@ -237,10 +237,11 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*.10*(1.-smoothstep(-.02,.16,uSunElev));
           { // town boundaries: soft warm fill + crisp glowing outline
             float fb=max(fwidth(lu.b),1e-4);
-            float edge=1.-smoothstep(0.,fb*1.6,abs(lu.b-.5));
-            float dash=.55+.45*step(.5,fract((vW.x+vW.z)*1.4));
-            c=mix(c,c*1.12+vec3(.03,.02,.0),smoothstep(.45,.6,lu.b)*.5);
-            c+=vec3(1.,.78,.45)*edge*dash*.55*(1.-smoothstep(120.,320.,camD)); }
+            float edge=1.-smoothstep(fb*.6,fb*1.8,abs(lu.b-.5));
+            float glow=exp(-abs(lu.b-.5)/(fb*5.))*.35;
+            float inside=smoothstep(.45,.6,lu.b);
+            c=mix(c,c*1.18+vec3(.035,.025,.01),inside*.6);
+            c+=vec3(1.,.74,.40)*(edge*.75+glow*.8)*(.6+.4*smoothstep(-.02,.16,-uSunElev+.2)); }
           gl_FragColor=vec4(tone(fogged(c,vW,.0029)),cov);
         }`
 		});
