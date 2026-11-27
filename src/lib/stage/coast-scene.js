@@ -265,8 +265,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           c=mix(c, c*1.35+vec3(.02,.018,.012), (1.-min(f,1.))*.32*clFade);
           { float ng=1.-smoothstep(-.02,.16,uSunElev);
             float grain=noise(vW.xz*38.)*noise(vW.xz*11.+3.);
-            c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*(.10+.9*grain)*ng*mix(.12,1.,smoothstep(.4,.6,lu.b));
-            c+=vec3(1.,.58,.28)*smoothstep(.2,.75,lu.b)*.14*ng; }
+            c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*(.15+1.5*grain)*ng*mix(.12,1.,smoothstep(.4,.6,lu.b));
+            c+=vec3(1.,.58,.28)*smoothstep(.1,.75,lu.b)*.32*ng; }
           { // town boundaries: soft warm fill + crisp glowing outline
             float fb=max(fwidth(lu.b),1e-4);
             float edge=1.-smoothstep(fb*.6,fb*1.8,abs(lu.b-.5));
@@ -324,7 +324,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           vec3 c=mix(body,sky(r)*(.7+.3*sh),fres*.9);
           // moon path
           float mp=pow(max(dot(r,uMoon),0.),mix(90.,24.,far));
-          c+=vec3(.75,.82,.95)*mp*nm*uDio*1.6;
+          c+=vec3(.75,.82,.95)*mp*nm*uDio*2.6;
           // bathymetric isolines every 20 m (shelf) — chart detail
           { float dm=depth*depth*1500.; float lv=dm/20.; float fw=max(fwidth(lv),1e-4);
             float ln=1.-min(abs(fract(lv-.5)-.5)/fw,1.);
@@ -751,8 +751,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv;
             float tw=.75+.25*sin(uTime*(1.+seed*2.)+seed*40.);
             float ng=1.-smoothstep(-.02,.16,uSunElev);
-            vA=tw*(.2+ng*1.1)*(.5+seed*.5);
-            gl_PointSize=clamp(mix(90.,230.,ng)/-mv.z,1.5,6.)*uPx; }`,
+            vA=tw*(.2+ng*1.9)*(.5+seed*.5);
+            gl_PointSize=clamp(mix(90.,320.,ng)/-mv.z,1.5,8.)*uPx; }`,
 				fragmentShader: `varying float vA; void main(){ vec2 d=gl_PointCoord-.5; float a=exp(-dot(d,d)*18.)*vA;
           gl_FragColor=vec4(vec3(1.,.72,.42)*a,1.); }`
 			})
@@ -761,6 +761,27 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		scene.add(lights);
 	}
 	const landmarks = PLACES.map((pl) => ({ ...pl, pos: world(pl.lat, pl.lon, 0.4) }));
+
+	// night: big soft halos over the towns + navigation lights on boats (added after boats exist)
+	const haloMat = new THREE.ShaderMaterial({
+		uniforms: U,
+		transparent: true,
+		depthWrite: false,
+		blending: THREE.AdditiveBlending,
+		vertexShader: `attribute float size; varying vec2 vQ; uniform float uSunElev;
+      void main(){ vQ=position.xz; gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.); }`,
+		fragmentShader: `uniform float uSunElev; varying vec2 vQ;
+      void main(){ float r=length(vQ); float ng=1.-smoothstep(-.04,.12,uSunElev);
+        float a=exp(-r*r*5.)*.55+exp(-r*r*40.)*.5; gl_FragColor=vec4(vec3(1.,.62,.3)*a*ng,1.); }`
+	});
+	for (const pl of PLACES.filter((p) => p.tier === 1 || p.tier === 2)) {
+		const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2), haloMat);
+		const sc = pl.tier === 1 ? 9 : 3.2;
+		m.scale.set(sc, 1, sc);
+		m.position.copy(world(pl.lat, pl.lon)).setY(Math.max(0.2, world(pl.lat, pl.lon).y + 0.3));
+		m.renderOrder = 4;
+		scene.add(m);
+	}
 
 	// ---------- lighthouses: sweeping beams at dawn ----------
 	const beamSweep = new THREE.ShaderMaterial({
@@ -776,7 +797,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
       void main(){ float x=vUv.x, y=(vUv.y-.5)*2.;
         float a=pow(1.-x,1.4)*exp(-y*y*(3.+x*-2.))*(.35+.65*smoothstep(0.,.04,x));
         float dawn=1.-smoothstep(-.03,.05,uSunElev);
-        float dc=length(vW-cameraPosition); a*=dawn*.55*exp(-dc*.006)*smoothstep(4.,14.,dc);
+        float dc=length(vW-cameraPosition); a*=dawn*.95*exp(-dc*.004)*smoothstep(4.,14.,dc);
         gl_FragColor=vec4(vec3(1.,.86,.62)*a,1.); }`
 	});
 	const lighthouses = LIGHTHOUSES.map((l, i) => {
@@ -901,7 +922,31 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	flockMesh.frustumCulled = false;
 	scene.add(flockMesh);
 	const flocks = yachts.filter((_, i) => i % 3 === 0).slice(0, FLOCKS).map((y, i) => ({ cx: y.cx - 0.8, cz: y.cz, r: 2.5 + (i % 3), h: 0.7 + (i % 4) * 0.2, a: i * 1.7, w: 0.12 + (i % 3) * 0.03 }));
+	const navGeo = new THREE.BufferGeometry();
+	const navPos = new Float32Array((yachts.length + 8) * 3);
+	navGeo.setAttribute('position', new THREE.BufferAttribute(navPos, 3));
+	const navPts = new THREE.Points(
+		navGeo,
+		new THREE.ShaderMaterial({
+			uniforms: { ...U, uPx: { value: renderer.getPixelRatio() } },
+			transparent: true,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending,
+			vertexShader: `uniform float uSunElev,uPx,uTime; varying float vA;
+        void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv;
+          vA=(1.-smoothstep(-.04,.1,uSunElev))*(.75+.25*sin(uTime*3.+position.x));
+          gl_PointSize=clamp(260./-mv.z,2.,7.)*uPx; }`,
+			fragmentShader: `varying float vA; void main(){ vec2 d=gl_PointCoord-.5; float a=exp(-dot(d,d)*16.)*vA; gl_FragColor=vec4(vec3(1.,.95,.85)*a*1.3,1.); }`
+		})
+	);
+	navPts.frustumCulled = false;
+	scene.add(navPts);
 	function updateSea(dt) {
+		let ni = 0;
+		for (const y of yachts) { const q = y.g.position; navPos.set([q.x, 0.25, q.z], ni++ * 3); }
+		for (const sh of ships) { const q = sh.obj.position; navPos.set([q.x, 0.45, q.z], ni++ * 3); }
+		navGeo.setDrawRange(0, ni);
+		navGeo.attributes.position.needsUpdate = true;
 		for (const y of yachts) {
 			y.a += y.w * dt;
 			const x = y.cx + Math.cos(y.a) * y.rx, z = y.cz + Math.sin(y.a) * y.rz;
@@ -1162,6 +1207,14 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	];
 	const _sp = new THREE.Vector3(), _st = new THREE.Vector3();
 	let storyShift = 0;
+	const SHIFT = [[0, 0.12], [0.34, 1], [0.68, 1], [1, 0.55]];
+	const shiftAt = (p) => {
+		for (let i = 1; i < SHIFT.length; i++) if (p <= SHIFT[i][0]) {
+			const k = (p - SHIFT[i - 1][0]) / (SHIFT[i][0] - SHIFT[i - 1][0]);
+			return SHIFT[i - 1][1] + (SHIFT[i][1] - SHIFT[i - 1][1]) * k * k * (3 - 2 * k);
+		}
+		return SHIFT.at(-1)[1];
+	};
 	function storyPose(p) {
 		for (let i = 1; i < STORY.length; i++) {
 			const [p0, a] = STORY[i - 1], [p1, b] = STORY[i];
@@ -1344,7 +1397,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		if (phase === 'over' && !tween?.isActive()) applyCtrl(dt, story ? 2.2 : 9);
 		const drift = phase === 'over' && !reduce && !ctrl.touched ? 1 : 0;
 		look.copy(target).add(new THREE.Vector3(pointer.x * 3 * drift, -pointer.y * 2 * drift, 0));
-		storyShift += ((story && !mobile ? 1 : 0) - storyShift) * (1 - Math.exp(-dt * 2));
+		storyShift += ((story && !mobile ? shiftAt(dayP) : 0) - storyShift) * (1 - Math.exp(-dt * 2));
 		if (storyShift > 0.001) {
 			const fwd = target.clone().sub(camera.position), d = fwd.length();
 			const right = fwd.cross(camera.up).normalize();

@@ -6,6 +6,10 @@
 	const words = ['Дом', 'на', 'первой', 'линии'];
 	const listOn = $derived(stage.phase === 'over' || !stage.webgl);
 	let scrolled = $state(0);
+	let listOpen = $state(false);
+	$effect(() => {
+		if (!stage.explore) listOpen = false;
+	});
 	const heroOn = $derived(
 		((['intro', 'turn', 'over'].includes(stage.phase) && !stage.explore) || !stage.webgl) && scrolled < 0.08
 	);
@@ -40,7 +44,7 @@
 	/>
 </svelte:head>
 
-<section class="hero" class:on={heroOn} style:--base={stage.phase === 'intro' ? '0.9s' : '0.05s'} aria-labelledby="h">
+<section class="hero" class:on={heroOn || (stage.explore && scrolled < 0.08)} class:aside={stage.explore} style:--base={stage.phase === 'intro' ? '0.9s' : '0.05s'} aria-labelledby="h">
 	<h1 id="h">
 		{#each words as w, i}
 			<span class="w" style:--i={i}><span>{w}</span></span>{' '}
@@ -51,7 +55,7 @@
 
 <svelte:window onscroll={onScroll} onresize={onScroll} />
 
-<div class="story" class:on={(stage.phase === 'over' && !stage.explore) || !stage.webgl}>
+<div class="story" class:on={stage.phase === 'over' || !stage.webgl} class:aside={stage.explore}>
 	<section class="chapter c1" aria-labelledby="c1">
 		<small>День · побережье</small>
 		<h2 id="c1">378 километров моря</h2>
@@ -84,7 +88,8 @@
 	{/each}
 </nav>
 
-<section class="index" class:on={listOn} class:away={scrolled > 0.08} id="objects" aria-labelledby="objh">
+<section class="index" class:on={listOn} class:away={scrolled > 0.08 && !stage.explore} class:aside={stage.explore && !listOpen} id="objects" aria-labelledby="objh">
+	{#if stage.explore}<button class="tab" onclick={() => (listOpen = !listOpen)} aria-expanded={listOpen}>{listOpen ? 'Скрыть' : 'Объекты'}</button>{/if}
 	<h2 id="objh">Объекты на карте</h2>
 	<ol>
 		{#each data.properties as p (p.slug)}
@@ -114,6 +119,39 @@
 	}
 	.story.on {
 		opacity: 1;
+	}
+	.story .chapter > *,
+	section.hero {
+		transition:
+			opacity 0.8s var(--ease),
+			translate 0.9s var(--ease);
+	}
+	.story.aside .chapter > *,
+	section.hero.aside {
+		translate: calc(-100% - 2 * var(--gutter)) 0;
+		opacity: 0;
+	}
+	.index.on.aside {
+		translate: calc(100% + var(--gutter)) 0;
+	}
+	.tab {
+		position: absolute;
+		left: -46px;
+		top: 0;
+		writing-mode: vertical-rl;
+		rotate: 180deg;
+		padding: 12px 8px;
+		border: 1px solid var(--line);
+		background: rgba(3, 9, 13, 0.6);
+		backdrop-filter: blur(6px);
+		color: var(--ink);
+		font: inherit;
+		font-size: 12px;
+		letter-spacing: 0.12em;
+		cursor: pointer;
+	}
+	.tab:hover {
+		border-color: var(--accent);
 	}
 	.chapter {
 		min-height: 100vh;
