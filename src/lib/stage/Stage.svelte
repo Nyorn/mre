@@ -65,7 +65,7 @@
 			for (let i = 0; i < frame.towns.length; i++) {
 				const f = frame.towns[i], el = townsEl.children[i];
 				el.style.transform = `translate(${f.x}px, ${f.y}px)`;
-				const range = f.tier === 1 ? 1e9 : f.tier === 2 ? 150 : 200;
+				const range = f.tier <= 1 ? 1e9 : f.tier === 2 ? 150 : 200;
 				const pinned = pinPlaces.has(f.name);
 				const w2 = (el.__w || (el.__w = el.offsetWidth)) / 2 + 6;
 				const overlap = placed.some((r) => Math.abs(r.x - f.x) < r.w + w2 && Math.abs(r.y - f.y) < 16);
@@ -243,7 +243,7 @@
 		<small>{t.kind}</small>
 		<h3>{t.name}</h3>
 		<p>{t.about}</p>
-		<small class="ap">✈ {t.airport}</small>
+		{#if t.tier}<small class="ap">✈ {t.airport}</small>{/if}
 	</aside>
 {/if}
 
@@ -480,6 +480,14 @@
 		letter-spacing: 0.24em;
 		color: rgba(236, 239, 232, 0.8);
 		font-weight: 500;
+	}
+	.towns .t0 {
+		font-size: 15px;
+		letter-spacing: 0.55em;
+		font-style: italic;
+		text-transform: uppercase;
+		color: rgba(200, 225, 230, 0.5);
+		font-weight: 300;
 	}
 	.towns .t3 {
 		text-transform: none;

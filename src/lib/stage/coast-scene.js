@@ -15,7 +15,8 @@ const glsl = (oct) => /* glsl */ `
 #define CLOUD_H ${CLOUD_H.toFixed(1)}
 uniform float uTime, uSunElev, uCloudAmt, uFogScale;
 uniform vec3 uSun, uTarget;
-uniform float uDio; uniform vec2 uBox;
+uniform float uDio; uniform vec2 uBox; uniform vec3 uMoon;
+float nightAmt(){ return 1.-smoothstep(-.10,.02,uSunElev); }
 // distance outside the model's footprint (<=0 inside)
 float boxOut(vec3 w){ return max(abs(w.x)-uBox.x, abs(w.z)-uBox.y); }
 // world beyond the model dissolves from the horizon inward; returns rim glow at the cut front (-1 = discard)
@@ -44,10 +45,13 @@ vec3 sky(vec3 d){
   vec3 horAway = mix(vec3(.05,.07,.11), vec3(.50,.58,.66), t);
   horAway = mix(horAway, vec3(.58,.47,.52), .55*smoothstep(-.02,.06,uSunElev)*(1.-smoothstep(.10,.24,uSunElev))*(1.-smoothstep(0.,.16,h)));
   vec3 horSun = mix(vec3(.30,.13,.16), vec3(1.25,.66,.36), t);
+  float noon = smoothstep(.3,.85,uSunElev);
+  horSun = mix(horSun, vec3(.72,.80,.86), noon);
+  zen = mix(zen, vec3(.20,.38,.60), noon);
   vec3 c = mix(mix(horAway,horSun,toward), zen, pow(h,.45));
   float s = max(dot(d,uSun),0.);
   c += vec3(1.4,.85,.5)*pow(s,900.)*8.*smoothstep(-.06,.02,uSunElev);
-  c += vec3(1.,.55,.3)*pow(s,8.)*.35*(1.-t*.6);
+  c += vec3(1.,.55,.3)*pow(s,8.)*.35*(1.-t*.6)*(1.-noon*.8);
   return c;
 }
 vec3 tone(vec3 c){ c = 1.-exp(-c*1.15); return pow(c, vec3(.95)); }
@@ -124,7 +128,9 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		uFocusAmt: { value: 0 },
 		uDio: { value: reduce ? 1 : 0 },
 		uSunAz: { value: 0.4 },
-		uBox: { value: new THREE.Vector2(KW / 2, KH / 2) }
+		uMoon: { value: new THREE.Vector3(-0.86, 0.2, 0.47).normalize() },
+		uBox: { value: new THREE.Vector2(KW / 2, KH / 2) },
+		uRose: { value: new THREE.Vector3() }
 	};
 	const setSun = () => {
 		const e = U.uSunElev.value;
@@ -132,6 +138,10 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		U.uSun.value.set(Math.cos(e) * Math.cos(az), Math.sin(e), Math.cos(e) * Math.sin(az)).normalize();
 	};
 	setSun();
+	{
+		const r = world(43.55, 28.74);
+		U.uRose.value.set(r.x, r.z, 8.5);
+	}
 
 	// sky
 	const skyMesh = new THREE.Mesh(
@@ -146,7 +156,11 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				COMMON +
 				`varying vec3 vD;
         void main(){ vec3 d0=normalize(vD); vec3 d=d0; d.y=max(d.y,-.02); vec3 c=sky(d);
-          c=mix(c, c*.18+vec3(.004,.008,.012), uDio*smoothstep(-.02,-.35,d0.y));
+          float dayS=smoothstep(-.05,.5,uSunElev);
+          vec3 studio=mix(c*.18+vec3(.004,.008,.012), mix(c,vec3(.36,.50,.62),.5)*.75, dayS);
+          c=mix(c, studio, uDio*smoothstep(-.02,-.35,d0.y));
+          { float nm=nightAmt()*uDio; float md=max(dot(d0,uMoon),0.);
+            c+=vec3(.85,.9,1.)*(smoothstep(.99988,.99994,md)*1.6+pow(md,60.)*.10+pow(md,8.)*.03)*nm*step(0.,d0.y); }
           float night=1.-smoothstep(-.10,.04,uSunElev);
           if(night>0.){ vec2 p=d.xz/(d.y+.35)*170.; vec2 cell=floor(p); float h=hash(cell);
             vec2 f=fract(p)-.5-(vec2(hash(cell+3.1),hash(cell+7.7))-.5)*.6;
@@ -280,7 +294,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				vertexShader: `varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
 				fragmentShader:
 					COMMON +
-					`uniform sampler2D uMap; uniform vec2 uKM; varying vec3 vW;
+					`uniform sampler2D uMap; uniform vec2 uKM; uniform vec3 uRose; varying vec3 vW;
         vec2 grad(vec2 p){ float e=.05, a=0., b=0., amp=1., fr=1.;
           for(int i=0;i<4;i++){ vec2 q=p*fr+vec2(uTime*.35*fr,uTime*.22);
             a+=(noise(q+vec2(e,0))-noise(q-vec2(e,0)))*amp; b+=(noise(q+vec2(0,e))-noise(q-vec2(0,e)))*amp; amp*=.55; fr*=2.1; }
@@ -301,7 +315,33 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float sh=cloudShadow(vW);
           vec3 shallow=mix(vec3(.03,.08,.09),vec3(.10,.30,.30),day), deep=mix(vec3(.008,.02,.03),vec3(.02,.08,.12),day);
           vec3 body=mix(shallow,deep,smoothstep(0.,.55,depth))*(.55+.45*sh);
+          float nm=nightAmt();
+          body+=vec3(.010,.022,.035)*nm;
           vec3 c=mix(body,sky(r)*(.7+.3*sh),fres*.9);
+          // moon path
+          float mp=pow(max(dot(r,uMoon),0.),mix(90.,24.,far));
+          c+=vec3(.75,.82,.95)*mp*nm*uDio*1.6;
+          // bathymetric isolines every 20 m (shelf) — chart detail
+          { float dm=depth*depth*1500.; float lv=dm/20.; float fw=max(fwidth(lv),1e-4);
+            float ln=1.-min(abs(fract(lv-.5)-.5)/fw,1.);
+            float fade=inside*ef*(1.-smoothstep(.4,.8,fw))*smoothstep(4.,12.,dm);
+            c=mix(c,c+vec3(.10,.14,.15)*(.4+.6*smoothstep(-.1,.4,uSunElev))+vec3(.06,.07,.09)*nm,ln*fade*.55); }
+          // compass rose engraved on the open sea
+          { vec2 q=(vW.xz-uRose.xy)/uRose.z; float rr=length(q);
+            if(rr<1.3){ float aa=atan(q.x,-q.y); float px=fwidth(rr)*1.2;
+              float ring=1.-smoothstep(0.,px,abs(rr-.86)); ring+=1.-smoothstep(0.,px,abs(rr-.93));
+              float seg=3.14159/18.;
+              float tick=step(.93,rr)*step(rr,1.0)*(1.-smoothstep(0.,.012,abs(fract(aa/seg+.5)-.5)*seg*rr));
+              float star=0., shade=0.;
+              for(int k=0;k<8;k++){ float ang=float(k)*.785398; vec2 dir=vec2(sin(ang),-cos(ang)); vec2 pp=vec2(-dir.y,dir.x);
+                bool card=(k==0||k==2||k==4||k==6);
+                float L=(k==0)?1.15:(card?.9:.55); float W=card?.11:.07;
+                float u=dot(q,dir), v=dot(q,pp); float inS=step(0.,u)*step(u,L)*step(abs(v),W*(1.-u/L));
+                star=max(star,inS); shade=max(shade,inS*step(0.,v)); }
+              vec3 gold=vec3(.95,.74,.42);
+              float vis=(.35+.65*nm)*.9*(1.-smoothstep(.6,1.6,fwidth(rr)*60.));
+              c=mix(c,gold*(.35+.65*shade)*(.6+.8*nm),star*.38*vis);
+              c+=gold*(ring*.35+tick*.3)*vis; } }
           float ex=mix(220.,36.,far);
           float s=pow(max(dot(r,uSun),0.),ex)*smoothstep(-.06,.03,uSunElev)*sh*mix(3.,.9,far);
           c+=vec3(1.5,.9,.55)*s;
@@ -414,7 +454,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float shadow=1.-smoothstep(-20.,60.,o);
           float glow=exp(-max(o,0.)/90.)*(1.-smoothstep(0.,700.,length(vW.xz)));
           vec3 c=vec3(.55,.38,.26)*glow*.10*smoothstep(-.1,.2,uSunElev+.15);
-          float a=(shadow*.8+glow*.5)*uDio;
+          float a=(shadow*mix(.8,.45,smoothstep(.2,.8,uSunElev))+glow*.5)*uDio;
           gl_FragColor=vec4(tone(c),a); }`
 		})
 	);
@@ -1087,6 +1127,11 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			setSun();
 		} else if (phase !== 'over' && U.uSunAz.value !== 0.4 && !gsap.isTweening(U.uSunAz)) {
 			gsap.to(U.uSunAz, { value: 0.4, duration: reduce ? 0 : 1.6, onUpdate: setSun });
+		}
+		{
+			// keep the moon ahead of the viewer so its path always lies on the water in frame
+			const f = target.clone().sub(camera.position).setY(0).normalize();
+			U.uMoon.value.set(f.x, 0.2, f.z).normalize();
 		}
 		updateShips(dt);
 		updateGulls(dt);
