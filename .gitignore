@@ -1,7 +1,12 @@
 .DS_Store
 node_modules
 /.svelte-kit
-/package
+/build
+/.netlify
+/.idea
 .env
 .env.*
-!.env.example
+/tools/tiles
+
+tools/buildings_osm.json
+tools/roads_osm.json

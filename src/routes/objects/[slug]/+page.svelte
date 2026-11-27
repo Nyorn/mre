@@ -1,115 +1,265 @@
-
-
 <script>
-	import Carousel from '$lib/Carousel.svelte';
-	import { modalStack } from '$lib/store.js'
-	import { onMount } from 'svelte';
-	export let data;
-	console.log("Data in slug.svelte:", data);
+	import { stage, sceneRef } from '#lib/stage/state.svelte.js';
+	import { formatDistance } from '#lib/geo/math.js';
+	import LeadForm from '#lib/LeadForm.svelte';
 
-	if (!data || !data.object) {
-		console.error("Data is not available or incorrect structure:", data);
-	}
+	let { data } = $props();
+	const p = $derived(data.property);
+	const arrived = $derived(stage.phase === 'object' || !stage.webgl);
+	const price = $derived(p.price ? `${p.price.toLocaleString('ru-RU')} €` : 'по запросу');
+	const facts = $derived([
+		['До моря', formatDistance(p.sea.meters)],
+		['Тип', p.type],
+		['Площадь', p.area ? `${p.area} м²` : '—'],
+		['Цена', price],
+		['Этаж', p.floor ?? '—'],
+		['До аэропорта', `${formatDistance(p.airport.meters)}, ${p.airport.name}`]
+	]);
+	const jsonLd = $derived(
+		JSON.stringify({
+			'@context': 'https://schema.org',
+			'@type': 'RealEstateListing',
+			name: p.title,
+			description: p.description,
+			url: `https://sea-estate.com/objects/${p.slug}`,
+			about: {
+				'@type': 'Accommodation',
+				name: p.title,
+				geo: { '@type': 'GeoCoordinates', latitude: p.lat, longitude: p.lon },
+				address: { '@type': 'PostalAddress', addressLocality: p.place, addressCountry: 'BG' }
+			}
+		})
+	);
 
-	// Получение массива ссылок на изображения из galleryCollection
-	let title;
-	let description;
-	let imageUrls = [];
-	$: if (data && data.object && data.object.galleryCollection) {
-		imageUrls = data.object.galleryCollection.items.map(item => item.url);
-	}
-	onMount(() => {
-		if (data && data.object) {
-			title = `Откройте для себя эти уникальные ${data.object.type} в ${data.object.city} | Sea Real Estate`;
-			description = `Ищете ${data.object.type} в ${data.object.city}? Обширный выбор недвижимости от Sea Real Estate. Охраняемые комплексы, бассейны, фитнес и многое другое`;
-			document.title = title;
-			document.querySelector('meta[name="description"]').setAttribute('content', description);
-		}
+	let y = $state(0);
+	let vh = $state(800);
+	$effect(() => {
+		stage.dim = Math.min(0.72, (y / vh) * 0.8);
+		sceneRef.api?.setPaused(y > vh * 1.6);
 	});
-	const baseUrl = "https://sea-estate.com/objects/";
-
+	$effect(() => () => {
+		stage.dim = 0;
+		sceneRef.api?.setPaused(false);
+	});
 </script>
+
+<svelte:window bind:scrollY={y} bind:innerHeight={vh} />
+
 <svelte:head>
-
-
-	<title>{title}</title>
-	<meta name="description" content="{description}" />
-
-
-
+	<title>{p.title} — {formatDistance(p.sea.meters)} до моря · Sea Estate</title>
+	<meta name="description" content="{p.title}, {p.place}. {p.line} До моря {formatDistance(p.sea.meters)}." />
+	{@html `<script type="application/ld+json">${jsonLd}</script>`}
 </svelte:head>
-<h1 class="text-3xl md:text-4xl lg:text-5xl font-bold my-4">{data.object.name}</h1>
-<section class="flex flex-col md:flex-row justify-center items-center md:items-start md:space-x-4 px-4 py-2">
-	{#if data && data.object}
-		<div class="w-full md:w-1/2 galery">
-		    <Carousel slug={data.object.slug} />
 
-
+<article>
+	<section class="first" class:on={arrived}>
+		<a class="link-quiet back" href="/">← Всё побережье</a>
+		<div class="head">
+			{#if p.demo}<span class="demo-tag">Демо-объект, данные условные</span>{/if}
+			<p class="place">{p.place}</p>
+			<h1>{p.title}</h1>
+			<p class="line">{p.line}</p>
 		</div>
-		<div class="w-full md:w-1/2 mt-4 md:mt-0">
-			<div class="p-4 rounded-lg shadow-md">
-				<p class="text-sm md:text-base">Город: {data.object.city}</p>
-				<p class="text-sm md:text-base">Цена: {data.object.price}</p>
-				<p class="text-sm md:text-base">Этаж: {data.object.floor} из {data.object.maxFloor}</p>
-				<p class="text-sm md:text-base">Площадь: {data.object.area}</p>
-				<p class="text-sm md:text-base">Спален: {data.object.bedrooms}</p>
-				<p class="text-sm md:text-base">Лифт: {data.object.elevator ? 'Есть' : 'Нет'}</p>
-				<button class="variant-ghost-tertiary p-2 bg-indigo-600 text-white rounded mt-10 mb-10" button on:click={() => {
-  console.log("Opening modal with object name:", data.object.name);
-	 const objectUrl = `${baseUrl}${data.object.slug}`;
-  modalStack.open('feedback', { objectName: data.object.name, url: objectUrl });
-}}>
-					Заказать осмотр
-				</button>
-				<div class="mt-115 map">
-				<p class="text-base md:text-lg mt-110">{@html data.object.description}</p>
-				<iframe
-					width="400"
-					height="400"
-					title="Map"
-					margin-top="115px"
-					frameborder="0"
-					scrolling="no"
-					marginheight="0"
-					marginwidth="0"
-					src="https://maps.google.com/maps?q={data.object.location.lat},{data.object.location
-			.lon}&z=12&amp;output=embed"
-				/>
+		<a class="scroll" href="#details">Подробнее <span aria-hidden="true">↓</span></a>
+	</section>
 
-</div>
+	<div class="sheet" id="details">
+		<section class="facts" aria-label="Главное">
+			<dl>
+				{#each facts as [k, v]}
+					<div><dt>{k}</dt><dd>{v}</dd></div>
+				{/each}
+			</dl>
+			<p class="fine">Расстояния по прямой, посчитаны по береговой линии OpenStreetMap.</p>
+		</section>
+
+		<section class="block">
+			<h2>Об объекте</h2>
+			<p class="lead">{p.description}</p>
+		</section>
+
+		<section class="block">
+			<h2>Съёмка</h2>
+			<div class="media-slot">
+				<p>Здесь будет 3D-скан объекта по реальной съёмке и фотографии.</p>
 			</div>
-		</div>
-	{:else}
-		<p>Информация об объекте не найдена.</p>
-	{/if}
-</section>
+		</section>
 
-<hr />
+		<section class="block">
+			<h2>Рядом</h2>
+			<ul class="near">
+				{#each p.highlights as h}<li>{h}</li>{/each}
+			</ul>
+		</section>
 
-<section class="center">
+		<section class="block">
+			<h2>Покупка</h2>
+			<p class="lead">
+				Сколько стоит сделка сверх цены, какие документы нужны и сколько это занимает — по шагам.
+			</p>
+			<a class="link-quiet" href="/kak-kupit">Как купить недвижимость в Болгарии →</a>
+		</section>
 
+		<section class="block" id="lead">
+			<h2>Узнать больше</h2>
+			<LeadForm subject={p.title} />
+		</section>
+	</div>
+</article>
 
-</section>
+<a class="sticky cta" href="#lead"><span>Узнать цену и условия</span><span class="arr">→</span></a>
 
 <style>
-	.flex {
+	.first {
+		min-height: 100dvh;
 		display: flex;
-		justify-content: space-around;
-		align-items: center;
-		width: 100%;
+		flex-direction: column;
+		justify-content: flex-end;
+		padding: 96px var(--gutter) 56px;
+		position: relative;
 	}
-
-	.center {
+	.back {
+		position: absolute;
+		top: 84px;
+		left: var(--gutter);
+	}
+	.head {
+		max-width: 680px;
+		display: grid;
+		gap: 12px;
+		justify-items: start;
+		opacity: 0;
+		translate: 0 24px;
+		transition:
+			opacity 0.9s var(--ease),
+			translate 1.1s var(--ease);
+	}
+	.first.on .head {
+		opacity: 1;
+		translate: 0 0;
+	}
+	.place {
+		color: var(--accent);
+		font-size: 14px;
+	}
+	h1 {
+		font-size: clamp(40px, 6vw, 88px);
+		font-weight: 500;
+		line-height: 0.95;
+		letter-spacing: -0.045em;
+		text-wrap: balance;
+	}
+	.line {
+		font-size: 18px;
+		color: var(--muted);
+		max-width: 460px;
+	}
+	.scroll {
+		margin-top: 32px;
+		font-size: 13px;
+		color: var(--muted);
+		text-decoration: none;
+		align-self: flex-start;
+	}
+	.sheet {
+		background: linear-gradient(180deg, rgba(6, 19, 26, 0.86), var(--sheet) 240px);
+		backdrop-filter: blur(10px);
+		border-top: 1px solid var(--line);
+		padding: 56px var(--gutter) 140px;
+		display: grid;
+		gap: 72px;
+	}
+	.sheet > section {
+		max-width: 1080px;
+	}
+	dl {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+		border-top: 1px solid var(--line);
+	}
+	dl div {
+		padding: 16px 16px 16px 0;
+		border-bottom: 1px solid var(--line);
+	}
+	dt {
+		font-size: 12px;
+		color: var(--muted);
+	}
+	dd {
+		margin-top: 4px;
+		font-size: 19px;
+		font-variant-numeric: tabular-nums;
+	}
+	dl div:first-child dd {
+		color: var(--accent);
+	}
+	.fine {
+		margin-top: 10px;
+		font-size: 12px;
+		color: var(--muted);
+	}
+	.block {
+		display: grid;
+		grid-template-columns: minmax(140px, 260px) minmax(0, 640px);
+		gap: 16px 40px;
+		align-items: start;
+	}
+	.block > :not(h2) {
+		grid-column: 2;
+	}
+	h2 {
+		font-size: 14px;
+		font-weight: 400;
+		color: var(--muted);
+		padding-top: 4px;
+	}
+	.lead {
+		font-size: 20px;
+		line-height: 1.5;
+		letter-spacing: -0.01em;
+		text-wrap: pretty;
+	}
+	.media-slot {
+		aspect-ratio: 16 / 9;
+		border: 1px dashed var(--line);
+		display: grid;
+		place-items: center;
 		text-align: center;
+		padding: 24px;
+		color: var(--muted);
+		font-size: 14px;
 	}
-
-	img {
-		max-width: 400px;
-		height: auto;
+	.near {
+		list-style: none;
+		border-top: 1px solid var(--line);
 	}
-	.text-base {
-		margin-top: 30px;
-		margin-bottom: 50px;
+	.near li {
+		padding: 12px 0;
+		border-bottom: 1px solid var(--line);
+		font-size: 17px;
 	}
-
+	.sticky {
+		position: fixed;
+		right: var(--gutter);
+		bottom: 20px;
+		z-index: 15;
+	}
+	@media (max-width: 760px) {
+		.first {
+			padding-bottom: 104px;
+		}
+		.block {
+			grid-template-columns: 1fr;
+		}
+		.block > :not(h2) {
+			grid-column: 1;
+		}
+		.sticky {
+			left: var(--gutter);
+			bottom: max(12px, env(safe-area-inset-bottom));
+		}
+		.lead {
+			font-size: 18px;
+		}
+	}
 </style>

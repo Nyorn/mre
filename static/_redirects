@@ -1,0 +1,27 @@
+# Old site (2024) URLs -> new structure
+/contacts  /kontakty  301
+/about     /          301
+/objects   /          301
+/objects/studiya-izida-palas  /  301
+/objects/apartamenty-v-byala2  /  301
+/objects/apartamenty-v-byala  /  301
+/objects/studiya-v-byala  /  301
+/objects/apartamenty-sanraiz2  /  301
+/objects/apartamenty-byala  /  301
+/objects/apartamenty-obzor  /  301
+/objects/apartamenty-sanraiz  /  301
+/objects/apartamenty-fortuna-keip  /  301
+/objects/cascades  /  301
+/objects/elitoniya  /  301
+/objects/admiral-plaza  /  301
+/objects/khavana-vlas  /  301
+/objects/mezonet-galeriya  /  301
+/objects/obzor-chernomorska  /  301
+/objects/zolotye-peski  /  301
+/objects/diamant  /  301
+/objects/vip-style  /  301
+/objects/revierra-fort-1-line  /  301
+/objects/dolche-vita-2  /  301
+/objects/appartamenty-arlend  /  301
+/objects/appartament-koloni  /  301
+/objects/byala-porto  /  301

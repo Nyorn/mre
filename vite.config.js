@@ -1,11 +1,12 @@
 import { sveltekit } from '@sveltejs/kit/vite';
+import adapter from '@sveltejs/adapter-static';
+import { defineConfig } from 'vite';
 
-
-const config = {
-	plugins: [sveltekit()],
-	ssr: {
-		noExternal: ['@splidejs/splide-shader-carousel']
-	}
-};
-
-export default config;
+export default defineConfig({
+	plugins: [
+		sveltekit({
+			adapter: adapter({ pages: 'build', assets: 'build', fallback: '404.html', strict: true }),
+			prerender: { handleHttpError: 'fail' }
+		})
+	]
+});

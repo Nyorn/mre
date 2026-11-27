@@ -1,53 +1,31 @@
 {
-  "name": "sveltekit-starter",
-  "version": "0.0.1",
+  "name": "sea-estate",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "vite dev --open",
+    "dev": "vite dev",
     "build": "vite build",
-    "package": "svelte-kit package",
     "preview": "vite preview",
-    "lint": "prettier --check --plugin-search-dir=. .",
-    "format": "prettier --write --plugin-search-dir=. .",
-    "setup": "node ./contentful/setup.js",
-    "postbuild": "node ./src/scripts/generate-sitemap.js"
+    "format": "prettier --write ."
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "devDependencies": {
-    "@sveltejs/adapter-netlify": "^4.1.0",
-    "@sveltejs/adapter-static": "^3.0.1",
-    "autoprefixer": "^10.4.16",
-    "contentful-import": "^9.4.8",
-    "dotenv": "^16.3.1",
-    "eslint": "^8.56.0",
-    "eslint-plugin-svelte": "^2.35.1",
-    "postcss": "^8.4.33",
-    "prettier": "^3.0.3",
-    "prettier-plugin-svelte": "^3.0.3",
-    "tailwindcss": "^3.4.1",
-    "vite": "^5.0.12"
+    "@sveltejs/adapter-static": "^4.0.1",
+    "@sveltejs/kit": "^3.4.1",
+    "@sveltejs/vite-plugin-svelte": "^7.3.2",
+    "prettier": "^3.10.1",
+    "prettier-plugin-svelte": "^4.2.0",
+    "svelte": "^5.59.2",
+    "vite": "^8.4.0"
   },
-  "type": "module",
   "dependencies": {
-    "@contentful/rich-text-html-renderer": "^16.3.0",
-    "@egjs/flicking-plugins": "^4.7.1",
-    "@formkit/auto-animate": "^0.8.1",
-    "@fortawesome/fontawesome-free": "^6.5.1",
-    "@fortawesome/free-brands-svg-icons": "^6.5.1",
-    "@fortawesome/free-solid-svg-icons": "^6.5.1",
-    "@skeletonlabs/skeleton": "^2.7.1",
-    "@skeletonlabs/tw-plugin": "^0.3.1",
-    "@splidejs/splide": "^4.1.4",
-    "@splidejs/svelte-splide": "^0.2.9",
-    "@sveltejs/kit": "^2.4.1",
-    "flowbite": "^2.2.1",
-    "svelte": "^4.2.2",
-    "svelte-awesome": "^3.3.1",
-    "svelte-checkbox": "^1.0.1",
-    "svelte-fa": "^4.0.2",
-    "svelte-legos": "^0.2.2",
-    "sveltekit-sitemap": "^1.0.21",
-    "three": "^0.160.0"
+    "gsap": "^3.15.1",
+    "three": "^0.187.0"
+  },
+  "imports": {
+    "#lib/*": "./src/lib/*"
   }
 }
