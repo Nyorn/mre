@@ -54,6 +54,7 @@
 	let lastPlaced = [];
 	let n = 0;
 	function onFrame(frame) {
+		if (import.meta.env.DEV) window.__frame = frame;
 		if (showPins) layoutPins(frame);
 		if (compassEl) compassEl.style.setProperty('--az', `${180 - (frame.view.az * 180) / Math.PI}deg`);
 		if (cardEl && hover >= 0) {
@@ -65,7 +66,7 @@
 			for (let i = 0; i < frame.towns.length; i++) {
 				const f = frame.towns[i], el = townsEl.children[i];
 				el.style.transform = `translate(${f.x}px, ${f.y}px)`;
-				const range = f.tier <= 1 ? 1e9 : f.tier === 2 ? 150 : 200;
+				const range = f.tier <= 1 ? 1e9 : f.tier === 2 ? 430 : 260;
 				const pinned = pinPlaces.has(f.name);
 				const w2 = (el.__w || (el.__w = el.offsetWidth)) / 2 + 6;
 				const overlap = placed.some((r) => Math.abs(r.x - f.x) < r.w + w2 && Math.abs(r.y - f.y) < 16);

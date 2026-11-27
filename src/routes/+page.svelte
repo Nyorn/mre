@@ -100,6 +100,10 @@
 </section>
 
 <style>
+	/* the story makes <main> tall: let clicks fall through to the map and its labels */
+	:global(main:has(.story)) {
+		pointer-events: none;
+	}
 	.story {
 		position: relative;
 		z-index: 2;

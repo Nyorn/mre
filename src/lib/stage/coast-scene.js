@@ -9,6 +9,7 @@ const EX = 4.0; // vertical relief exaggeration
 const CLOUD_H = 16.0;
 const ANCHOR = [42.85, 27.78]; // optical centre of the coast for overview framing
 const SUN_HOME = 0.075;
+const SUN_AZ0 = -1.0; // dawn sun azimuth: east-north-east, over the sea
 
 const glsl = (oct) => /* glsl */ `
 #define OCT ${oct}
@@ -121,13 +122,13 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		uSun: { value: new THREE.Vector3() },
 		uSunElev: { value: reduce ? SUN_HOME : -0.12 },
 		uTarget: { value: target },
-		uCloudAmt: { value: 0.35 },
+		uCloudAmt: { value: 0.72 },
 		uFogScale: { value: mobile ? 0.6 : 1 },
 		uRibbon: { value: reduce ? 1 : 0 },
 		uFocus: { value: new THREE.Vector3() },
 		uFocusAmt: { value: 0 },
 		uDio: { value: reduce ? 1 : 0 },
-		uSunAz: { value: 0.4 },
+		uSunAz: { value: SUN_AZ0 },
 		uMoon: { value: new THREE.Vector3(-0.86, 0.2, 0.47).normalize() },
 		uBox: { value: new THREE.Vector2(KW / 2, KH / 2) },
 		uRose: { value: new THREE.Vector3() }
@@ -262,14 +263,17 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float cl=hm/50.; float fw=max(fwidth(cl),1e-4); float f=abs(fract(cl-.5)-.5)/fw;
           float clFade=(1.-smoothstep(.25,.6,fw))*smoothstep(8.,30.,hm);
           c=mix(c, c*1.35+vec3(.02,.018,.012), (1.-min(f,1.))*.32*clFade);
-          c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*.10*(1.-smoothstep(-.02,.16,uSunElev));
+          { float ng=1.-smoothstep(-.02,.16,uSunElev);
+            float grain=noise(vW.xz*38.)*noise(vW.xz*11.+3.);
+            c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*(.10+.9*grain)*ng*mix(.3,1.,smoothstep(.4,.6,lu.b));
+            c+=vec3(1.,.58,.28)*smoothstep(.2,.75,lu.b)*.14*ng; }
           { // town boundaries: soft warm fill + crisp glowing outline
             float fb=max(fwidth(lu.b),1e-4);
             float edge=1.-smoothstep(fb*.6,fb*1.8,abs(lu.b-.5));
             float glow=exp(-abs(lu.b-.5)/(fb*5.))*.35;
             float inside=smoothstep(.45,.6,lu.b);
             c=mix(c,c*1.18+vec3(.035,.025,.01),inside*.6);
-            c+=vec3(1.,.74,.40)*(edge*.75+glow*.8)*(.6+.4*smoothstep(-.02,.16,-uSunElev+.2)); }
+            }
           c+=vec3(1.4,.8,.45)*rim*2.;
           gl_FragColor=vec4(tone(fogged(c,vW,.0029)),cov);
         }`
@@ -324,7 +328,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           // bathymetric isolines every 20 m (shelf) — chart detail
           { float dm=depth*depth*1500.; float lv=dm/20.; float fw=max(fwidth(lv),1e-4);
             float ln=1.-min(abs(fract(lv-.5)-.5)/fw,1.);
-            float fade=inside*ef*(1.-smoothstep(.4,.8,fw))*smoothstep(4.,12.,dm);
+            float fade=inside*ef*(1.-smoothstep(.4,.8,fw))*smoothstep(4.,12.,dm)*smoothstep(25.,90.,dist);
             c=mix(c,c+vec3(.10,.14,.15)*(.4+.6*smoothstep(-.1,.4,uSunElev))+vec3(.06,.07,.09)*nm,ln*fade*.55); }
           // compass rose engraved on the open sea
           { vec2 q=(vW.xz-uRose.xy)/uRose.z; float rr=length(q);
@@ -465,10 +469,10 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	scene.add(walls);
 
 	// clouds: one fbm deck, lit from below at dawn, opened up around the camera target when seen from above
-	const clouds = new THREE.Mesh(
+	const cloudLayer = (layer) => new THREE.Mesh(
 		new THREE.PlaneGeometry(1100, 1100, 1, 1).rotateX(-Math.PI / 2),
 		new THREE.ShaderMaterial({
-			uniforms: U,
+			uniforms: { ...U, uLayer: { value: layer } },
 			transparent: true,
 			depthWrite: false,
 			side: THREE.DoubleSide,
@@ -476,8 +480,10 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			fragmentShader:
 				COMMON +
 				`varying vec3 vW;
+        uniform float uLayer;
         void main(){
-          float d=cloudDens(vW.xz); if(d<.01) discard;
+          float d0=cloudDens(vW.xz+vec2(uLayer*1.3,uLayer*.7));
+          float d=uLayer==0. ? d0 : clamp((d0-.38)/.62,0.,1.); if(d<.01) discard;
           float d2=cloudDens(vW.xz+normalize(uSun.xz)*5.);
           vec3 V=vW-cameraPosition; float dist=length(V); vec3 vd=V/dist;
           float day=smoothstep(-.10,.25,uSunElev);
@@ -487,15 +493,20 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           vec3 c=base*(.55+.35*(1.-d2)) + sc*(.32+.95*forward)*(1.-d2*.6);
           c+=sc*forward*(1.-d)*1.2;
           float above=step(CLOUD_H,cameraPosition.y);
-          float hole=mix(1., .32*smoothstep(14.,70.,length(vW.xz-uTarget.xz)), above);
-          float a=d*.85*hole*smoothstep(.5,8.,dist)*(1.-smoothstep(320.,520.,dist));
+          float hole=mix(1., mix(.5,1.,smoothstep(14.,70.,length(vW.xz-uTarget.xz))), above);
+          float a=d*(uLayer==0.?.7:.45)*hole*smoothstep(.5,8.,dist)*(1.-smoothstep(320.,520.,dist));
           a*=1.-uDio*smoothstep(-10.,30.,boxOut(vW));
           gl_FragColor=vec4(tone(fogged(c,vW,.0034)),a);
         }`
 		})
 	);
-	clouds.position.y = CLOUD_H;
-	clouds.renderOrder = 5;
+	const clouds = new THREE.Group();
+	for (const [layer, dy] of [[-1, -0.9], [0, 0], [1, 0.9]]) {
+		const m = cloudLayer(layer);
+		m.position.y = CLOUD_H + dy;
+		m.renderOrder = 5 + layer * 0.1;
+		clouds.add(m);
+	}
 	scene.add(clouds);
 
 	// coastline ribbon: the signature line
@@ -534,25 +545,83 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				transparent: true,
 				depthWrite: false,
 				depthTest: false,
+				side: THREE.DoubleSide,
 				blending: THREE.AdditiveBlending,
 				vertexShader: `attribute float side,dist; attribute vec2 nrm; varying float vS,vD; varying vec3 vW;
           void main(){ vS=side; vD=dist; vec4 w=modelMatrix*vec4(position,1.);
             float d=length(w.xyz-cameraPosition); w.xz+=nrm*side*clamp(d*.0042,.02,.6);
             vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
-				fragmentShader: `uniform float uTime,uSunElev,uFocusAmt,uRibbon; uniform vec3 uFocus; varying float vS,vD; varying vec3 vW;
+				fragmentShader: `uniform float uTime,uSunElev,uFocusAmt,uRibbon; uniform vec3 uFocus; uniform vec2 uKM; varying float vS,vD; varying vec3 vW;
           void main(){
+            float zf=mix(-uKM.y*.5-4., uKM.y*.5+30., uRibbon); if(vW.z>zf) discard;
+            float head=exp(-(zf-vW.z)*.22)*(1.-step(.999,uRibbon));
             float core=exp(-vS*vS*14.), glow=exp(-vS*vS*2.5)*.35;
             float pulse=pow(.5+.5*sin(vD*.22-uTime*.9),6.)*.55;
             float foc=uFocusAmt*exp(-length(vW.xz-uFocus.xz)*.35);
             float night=1.-smoothstep(-.05,.30,uSunElev)*.35;
-            vec3 c=vec3(1.,.74,.42)*(core*1.1+glow)*(.95+pulse*1.2+foc*1.8)*night;
-            c*=1.4*exp(-length(vW-cameraPosition)*.0025)*uRibbon;
+            vec3 c=vec3(1.,.74,.42)*(core*.9+glow*.8)*(.95+pulse*1.2+foc*1.8)*night;
+            c+=vec3(1.,.9,.7)*head*(core*5.+glow*3.);
+            c*=1.4*exp(-length(vW-cameraPosition)*.0025);
             gl_FragColor=vec4(c,1.);
           }`
 			})
 		);
 		ribbon.renderOrder = 6;
 		scene.add(ribbon);
+	}
+
+	// ---------- town outlines (baked contours of built-up zones) ----------
+	let outlMesh = null;
+	if (geo.towns?.length) {
+		const pos = [], side = [], dist = [], nrm = [], idx = [];
+		let base = 0;
+		for (const line of geo.towns) {
+			const pts = line.map(([u, v]) => new THREE.Vector3((u - 0.5) * KW, Math.max(0, heightUV(u, v)) + 0.14, (v - 0.5) * KH));
+			let acc = 0;
+			for (let i = 0; i < pts.length; i++) {
+				const p = pts[i], a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+				const dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1;
+				if (i > 0) acc += p.distanceTo(pts[i - 1]);
+				pos.push(p.x, p.y, p.z, p.x, p.y, p.z);
+				side.push(1, -1);
+				dist.push(acc, acc);
+				nrm.push(-dz / l, dx / l, -dz / l, dx / l);
+				if (i < pts.length - 1) {
+					const k = base + i * 2;
+					idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
+				}
+			}
+			base += pts.length * 2;
+		}
+		const g = new THREE.BufferGeometry();
+		g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+		g.setAttribute('side', new THREE.Float32BufferAttribute(side, 1));
+		g.setAttribute('dist', new THREE.Float32BufferAttribute(dist, 1));
+		g.setAttribute('nrm', new THREE.Float32BufferAttribute(nrm, 2));
+		g.setIndex(idx);
+		const outl = new THREE.Mesh(
+			g,
+			new THREE.ShaderMaterial({
+				uniforms: U,
+				transparent: true,
+				depthWrite: false,
+				side: THREE.DoubleSide,
+				blending: THREE.AdditiveBlending,
+				vertexShader: `attribute float side,dist; attribute vec2 nrm; varying float vS,vD,vCam;
+          void main(){ vS=side; vD=dist; vec4 w=modelMatrix*vec4(position,1.);
+            float d=length(w.xyz-cameraPosition); vCam=d; w.xz+=nrm*side*clamp(d*.0034,.02,.8); w.y+=d*.002;
+            gl_Position=projectionMatrix*viewMatrix*w; }`,
+				fragmentShader: `uniform float uTime,uSunElev,uRibbon; varying float vS,vD,vCam;
+          void main(){ float core=exp(-vS*vS*6.);
+            float dash=smoothstep(.15,.3,fract(vD*.9-uTime*.15))*(1.-smoothstep(.75,.9,fract(vD*.9-uTime*.15)));
+            float ng=1.-smoothstep(-.02,.2,uSunElev);
+            vec3 c=mix(vec3(1.,.93,.8),vec3(1.,.72,.42),ng)*core*(.25+.75*dash)*(.55+.6*ng)*uRibbon;
+            gl_FragColor=vec4(c,1.); }`
+			})
+		);
+		outl.renderOrder = 6;
+		scene.add(outl);
+		outlMesh = outl;
 	}
 
 	// ---------- ships ----------
@@ -656,7 +725,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			const lx = lc.getContext('2d', { willReadFrequently: true });
 			lx.drawImage(luImg, 0, 0);
 			const ld = lx.getImageData(0, 0, luImg.width, luImg.height).data;
-			const want = mobile ? 1400 : 3200;
+			const want = mobile ? 2600 : 6500;
 			for (let k = 0; k < 400000 && seed.length < want; k++) {
 				const u = 0.25 + rand() * 0.75, v = rand();
 				const x = Math.floor(u * (luImg.width - 1)), y = Math.floor(v * (luImg.height - 1));
@@ -680,8 +749,9 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				vertexShader: `attribute float seed; uniform float uTime,uPx,uSunElev; varying float vA;
           void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv;
             float tw=.75+.25*sin(uTime*(1.+seed*2.)+seed*40.);
-            vA=tw*(1.-smoothstep(-.02,.16,uSunElev)*.8)*(.5+seed*.5);
-            gl_PointSize=clamp(90./-mv.z,1.5,5.)*uPx; }`,
+            float ng=1.-smoothstep(-.02,.16,uSunElev);
+            vA=tw*(.2+ng*1.1)*(.5+seed*.5);
+            gl_PointSize=clamp(mix(90.,230.,ng)/-mv.z,1.5,6.)*uPx; }`,
 				fragmentShader: `varying float vA; void main(){ vec2 d=gl_PointCoord-.5; float a=exp(-dot(d,d)*18.)*vA;
           gl_FragColor=vec4(vec3(1.,.72,.42)*a,1.); }`
 			})
@@ -705,7 +775,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
       void main(){ float x=vUv.x, y=(vUv.y-.5)*2.;
         float a=pow(1.-x,1.4)*exp(-y*y*(3.+x*-2.))*(.35+.65*smoothstep(0.,.04,x));
         float dawn=1.-smoothstep(.02,.14,uSunElev);
-        a*=dawn*.55*exp(-length(vW-cameraPosition)*.006);
+        float dc=length(vW-cameraPosition); a*=dawn*.55*exp(-dc*.006)*smoothstep(4.,14.,dc);
         gl_FragColor=vec4(vec3(1.,.86,.62)*a,1.); }`
 	});
 	const lighthouses = LIGHTHOUSES.map((l, i) => {
@@ -770,6 +840,95 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		gullMesh.instanceMatrix.needsUpdate = true;
 	}
 
+	// ---------- life on the water: yachts circling off the resorts, gull flocks ----------
+	const waterAt = (x, z) => {
+		const u = x / KW + 0.5, v = z / KH + 0.5;
+		if (u < 0 || u > 1 || v < 0 || v > 1) return false;
+		const i = (Math.round(v * (img.height - 1)) * img.width + Math.round(u * (img.width - 1))) * 4;
+		return px[i + 2] < 110;
+	};
+	const M_WHITE = shipMat('#eceae4'), M_SAIL = shipMat('#f6f3ea');
+	const sailGeo = new THREE.BufferGeometry();
+	sailGeo.setAttribute('position', new THREE.Float32BufferAttribute([0.15, 0.05, 0, 0.15, 0.95, 0, -0.42, 0.05, 0, 0.18, 0.05, 0, 0.18, 0.7, 0, 0.5, 0.05, 0], 3));
+	sailGeo.computeVertexNormals();
+	const hullGeo = new THREE.BoxGeometry(1, 0.12, 0.28);
+	const yachts = [];
+	{
+		let rnd = 11;
+		const rand = () => (rnd = (rnd * 16807) % 2147483647) / 2147483647;
+		for (const pl of PLACES.filter((p) => p.tier === 1 || p.tier === 2)) {
+			const c = world(pl.lat, pl.lon);
+			let x = c.x, z = c.z, steps = 0;
+			while (!waterAt(x, z) && steps++ < 60) x += 0.25;
+			if (steps >= 60) continue;
+			x += 2.2;
+			for (let n = 0; n < 2; n++) {
+				let rx = 1.4 + rand() * 1.6, rz = 0.9 + rand() * 1.2;
+				const cx = x + rand() * 1.5, cz = z + (rand() - 0.5) * 3;
+				let ok = false;
+				for (let tries = 0; tries < 4 && !ok; tries++) {
+					ok = true;
+					for (let k = 0; k < 16; k++) {
+						const a = (k / 16) * Math.PI * 2;
+						if (!waterAt(cx + Math.cos(a) * rx, cz + Math.sin(a) * rz)) ok = false;
+					}
+					if (!ok) { rx *= 0.6; rz *= 0.6; }
+				}
+				if (!ok) continue;
+				const g = new THREE.Group();
+				const boat = new THREE.Group();
+				const hull = new THREE.Mesh(hullGeo, M_WHITE);
+				hull.position.y = 0.03;
+				const sail = new THREE.Mesh(sailGeo, M_SAIL);
+				sail.material.side = THREE.DoubleSide;
+				boat.add(hull, sail);
+				boat.scale.setScalar(0.32);
+				const wake = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), wakeMat);
+				wake.geometry.translate(0.5, 0, 0);
+				wake.scale.set(-1.8, 1, 0.6);
+				wake.position.set(-0.12, 0.02, 0);
+				g.add(wake, boat);
+				scene.add(g);
+				yachts.push({ g, cx, cz, rx, rz, a: rand() * 6.28, w: (0.05 + rand() * 0.06) * (rand() < 0.5 ? -1 : 1), heel: rand() });
+			}
+		}
+	}
+	const FLOCKS = mobile ? 4 : 8, PER = 7;
+	const flockGeo = gullGeo.clone();
+	flockGeo.setAttribute('phase', new THREE.InstancedBufferAttribute(new Float32Array(FLOCKS * PER).map((_, i) => (i * 0.29) % 1), 1));
+	const flockMesh = new THREE.InstancedMesh(flockGeo, gullMesh.material, FLOCKS * PER);
+	flockMesh.frustumCulled = false;
+	scene.add(flockMesh);
+	const flocks = yachts.filter((_, i) => i % 3 === 0).slice(0, FLOCKS).map((y, i) => ({ cx: y.cx - 0.8, cz: y.cz, r: 2.5 + (i % 3), h: 0.7 + (i % 4) * 0.2, a: i * 1.7, w: 0.12 + (i % 3) * 0.03 }));
+	function updateSea(dt) {
+		for (const y of yachts) {
+			y.a += y.w * dt;
+			const x = y.cx + Math.cos(y.a) * y.rx, z = y.cz + Math.sin(y.a) * y.rz;
+			const tx = -Math.sin(y.a) * y.rx * Math.sign(y.w), tz = Math.cos(y.a) * y.rz * Math.sign(y.w);
+			y.g.position.set(x, 0, z);
+			y.g.rotation.y = Math.atan2(-tz, tx);
+			y.g.children[1].rotation.x = 0.12 * Math.sin(U.uTime.value * 0.8 + y.heel * 6) + 0.1 * Math.sign(y.w);
+		}
+		flockMesh.visible = phase !== 'intro' && phase !== 'idle';
+		if (!flockMesh.visible) return;
+		let n = 0;
+		for (const f of flocks) {
+			f.a += f.w * dt;
+			const fx = f.cx + Math.cos(f.a) * f.r, fz = f.cz + Math.sin(f.a) * f.r * 0.7;
+			const hx = -Math.sin(f.a), hz = Math.cos(f.a) * 0.7, hl = Math.hypot(hx, hz);
+			const dirx = hx / hl, dirz = hz / hl;
+			gullQ.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-dirz, dirx) - Math.PI / 2);
+			for (let k = 0; k < PER; k++) {
+				const row = Math.ceil(k / 2), sd = k % 2 ? 1 : -1;
+				gullP.set(fx - dirx * row * 0.22 + -dirz * sd * row * 0.2, f.h + Math.sin(U.uTime.value * 0.9 + k + f.a) * 0.03, fz - dirz * row * 0.22 + dirx * sd * row * 0.2);
+				gullS.setScalar(0.07);
+				gullM.compose(gullP, gullQ, gullS);
+				flockMesh.setMatrixAt(n++, gullM);
+			}
+		}
+		flockMesh.instanceMatrix.needsUpdate = true;
+	}
+
 	// ---------- property markers ----------
 	const beamMat = new THREE.ShaderMaterial({
 		uniforms: U,
@@ -804,7 +963,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		over: mobile
 			? { pos: new THREE.Vector3(250, 360, -330), tgt: new THREE.Vector3(10, -20, 40) }
 			: { pos: new THREE.Vector3(215, 150, -205), tgt: new THREE.Vector3(35, -15, 22) },
-		intro: { pos: A.clone().add(new THREE.Vector3(36, 2.2, 34)), tgt: A.clone().add(new THREE.Vector3(240, 6, 84)) }
+		intro: { pos: world(42.7, 27.95).setY(2.2), tgt: world(42.98, 27.99).setY(0.8) }
 	};
 	const objectPose = (m) => {
 		const side = new THREE.Vector3(-m.toSea.z, 0, m.toSea.x);
@@ -982,7 +1141,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 
 	// ---------- time of day driven by the home scroll story ----------
 	const DAY_KEYS = [
-		[0, SUN_HOME, 0.4],
+		[0, SUN_HOME, SUN_AZ0],
 		[0.34, 0.95, Math.PI / 2],
 		[0.68, 0.035, Math.PI - 0.35],
 		[1, -0.2, Math.PI - 0.15]
@@ -1004,7 +1163,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		setDay(p) {
 			dayP = Math.min(1, Math.max(0, p));
 		},
-		_dbg: import.meta.env.DEV ? { camera, target, ctrl, cur, POSES, ctrlFrom, U } : null,
+		_dbg: import.meta.env.DEV ? { camera, target, ctrl, cur, POSES, ctrlFrom, U, get outl() { return outlMesh; } } : null,
 		phase: () => phase,
 		/** Dawn intro. Resolves when the overview is reached. */
 		async intro({ skip = false } = {}) {
@@ -1021,7 +1180,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			await new Promise((r) => setTimeout(r, 3100));
 			if (phase !== 'intro') return;
 			setPhase('turn');
-			gsap.to(U.uRibbon, { value: 1, duration: 2.4, delay: 1.0, ease: 'power2.out' });
+			gsap.fromTo(U.uRibbon, { value: 0 }, { value: 1, duration: 4.2, delay: 0.6, ease: 'power1.inOut' });
 			await camTo(POSES.over, 3.8, A.clone().add(new THREE.Vector3(98, 18, -26)));
 			if (phase === 'turn') setPhase('over');
 		},
@@ -1125,8 +1284,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			U.uSunElev.value += (e - U.uSunElev.value) * k;
 			U.uSunAz.value += (a - U.uSunAz.value) * k;
 			setSun();
-		} else if (phase !== 'over' && U.uSunAz.value !== 0.4 && !gsap.isTweening(U.uSunAz)) {
-			gsap.to(U.uSunAz, { value: 0.4, duration: reduce ? 0 : 1.6, onUpdate: setSun });
+		} else if (phase !== 'over' && U.uSunAz.value !== SUN_AZ0 && !gsap.isTweening(U.uSunAz)) {
+			gsap.to(U.uSunAz, { value: SUN_AZ0, duration: reduce ? 0 : 1.6, onUpdate: setSun });
 		}
 		{
 			// keep the moon ahead of the viewer so its path always lies on the water in frame
@@ -1135,6 +1294,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		}
 		updateShips(dt);
 		updateGulls(dt);
+		updateSea(dt);
 		for (const l of lighthouses) l.rotation.y = time * 0.9 + l.userData.phase;
 		if (phase === 'over' && !tween?.isActive()) applyCtrl(dt);
 		const drift = phase === 'over' && !reduce && !ctrl.touched ? 1 : 0;

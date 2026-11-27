@@ -121,9 +121,43 @@ if os.path.exists(LU):
     small = zone.resize((LW // 4, LH // 4), Image.BILINEAR).point(lambda v: 255 if v > 20 else 0)
     small = small.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.MinFilter(7)).filter(ImageFilter.GaussianBlur(1.6))
     zone = small.resize((LW, LH), Image.BICUBIC)
+    # town outlines: marching squares on the quarter-res zone mask -> polylines in uv
+    SW, SH = small.size
+    sv = list(small.getdata())
+    V = lambda i, j: sv[j * SW + i]
+    T = 128
+    def ept(k):
+        kind, i, j = k
+        if kind == "h":
+            a, b_ = V(i, j), V(i + 1, j); f = (T - a) / ((b_ - a) or 1); return (i + f, j)
+        a, b_ = V(i, j), V(i, j + 1); f = (T - a) / ((b_ - a) or 1); return (i, j + f)
+    TABLE = {1: [(3, 0)], 2: [(0, 1)], 3: [(3, 1)], 4: [(1, 2)], 5: [(3, 0), (1, 2)], 6: [(0, 2)], 7: [(3, 2)],
+             8: [(2, 3)], 9: [(0, 2)], 10: [(0, 1), (2, 3)], 11: [(1, 2)], 12: [(1, 3)], 13: [(0, 1)], 14: [(3, 0)]}
+    adj = {}
+    for j in range(SH - 1):
+        for i in range(SW - 1):
+            c = (V(i, j) > T) | (V(i + 1, j) > T) << 1 | (V(i + 1, j + 1) > T) << 2 | (V(i, j + 1) > T) << 3
+            if c in (0, 15): continue
+            E = [("h", i, j), ("v", i + 1, j), ("h", i, j + 1), ("v", i, j)]
+            for e1, e2 in TABLE[c]:
+                adj.setdefault(E[e1], []).append(E[e2]); adj.setdefault(E[e2], []).append(E[e1])
+    seen = set(); outlines = []
+    for start in list(adj):
+        if start in seen: continue
+        line = [start]; seen.add(start); cur = start
+        while True:
+            nxt = [k for k in adj[cur] if k not in seen]
+            if not nxt: break
+            cur = nxt[0]; seen.add(cur); line.append(cur)
+        if len(line) < 8: continue
+        if start in adj.get(line[-1], []): line.append(start)
+        pts = [ept(k) for k in line][::2]
+        if pts[-1] != ept(line[-1]): pts.append(ept(line[-1]))
+        outlines.append([(round(x / (SW - 1), 5), round(y / (SH - 1), 5)) for x, y in pts])
+    print("town outlines:", len(outlines), sum(len(o) for o in outlines))
     urban = urban.filter(ImageFilter.GaussianBlur(0.8))
     beach = beach.filter(ImageFilter.MaxFilter(3)).filter(ImageFilter.GaussianBlur(0.8))
     Image.merge("RGB", (urban, beach, zone)).save(os.path.join(OUT, "landuse.png"), optimize=True)
     meta["landuse"] = [LW, LH]
-    json.dump({"meta": meta, "coast": coast}, open(os.path.join(OUT, "geo.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    json.dump({"meta": meta, "coast": coast, "towns": outlines}, open(os.path.join(OUT, "geo.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     print("landuse polygons:", n)
