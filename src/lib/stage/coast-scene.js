@@ -22,6 +22,7 @@ uniform float uTime, uSunElev, uCloudAmt, uFogScale;
 uniform vec3 uSun, uTarget;
 uniform float uDio; uniform vec2 uBox; uniform vec3 uMoon;
 float nightAmt(){ return 1.-smoothstep(-.10,.02,uSunElev); }
+float nightAmtF(){ return nightAmt(); }
 // distance outside the model's footprint (<=0 inside)
 float boxOut(vec3 w){ return max(abs(w.x)-uBox.x, abs(w.z)-uBox.y); }
 // world beyond the model dissolves from the horizon inward; returns rim glow at the cut front (-1 = discard)
@@ -56,7 +57,7 @@ vec3 sky(vec3 d){
   zen = mix(zen, vec3(.20,.38,.60), noon);
   vec3 c = mix(mix(horAway,horSun,toward), zen, pow(h,.45));
   float s = max(dot(d,uSun),0.);
-  c += vec3(1.4,.85,.5)*pow(s,900.)*3.*smoothstep(-.06,.02,uSunElev);
+  c += vec3(1.4,.85,.5)*pow(s,1400.)*1.5*smoothstep(-.06,.02,uSunElev);
   c += vec3(1.,.55,.3)*pow(s,8.)*.35*(1.-t*.6)*(1.-noon*.8)*smoothstep(-.18,-.04,uSunElev);
   return c;
 }
@@ -80,7 +81,12 @@ vec3 ambColor(float ny){ float day=smoothstep(-.10,.25,uSunElev);
   return mix(vec3(.065,.09,.15), vec3(.30,.36,.44), day)*(.55+.45*ny); }
 vec3 fogged(vec3 c, vec3 wpos, float k){
   vec3 V = wpos-cameraPosition; float dist = length(V);
-  return mix(c, sky(normalize(vec3(V.x,.02,V.z))), 1.-exp(-pow(dist*k*uFogScale*(1.-.62*uDio),1.6)));
+  vec3 hz = sky(normalize(vec3(V.x,.02,V.z)));
+  c = mix(c, hz, 1.-exp(-pow(dist*k*uFogScale*(1.-.62*uDio),1.6)));
+  // low camera: sea mist thickens toward the model's far edge so the cut never reads as a hard horizon
+  float low = 1.-smoothstep(8.,45.,cameraPosition.y);
+  float edge = smoothstep(-16.,0.,boxOut(wpos))*uDio*low*smoothstep(15.,60.,dist);
+  return mix(c, hz*(1.+.15*nightAmtF()), edge*.85);
 }
 `;
 
@@ -221,6 +227,9 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
             float sd=max(dot(d0,uSun),0.); c+=vec3(1.,.6,.32)*pow(sd,40.)*.12*smoothstep(-.08,.05,uSunElev);
           }
           c+=starsMoon(d0);
+          { // horizon mist band
+            vec3 hzc=sky(normalize(vec3(d0.x,.02,d0.z)));
+            c=mix(c,hzc*1.05,exp(-abs(d0.y)*22.)*.75*uDio*(1.-smoothstep(10.,60.,cameraPosition.y))); }
           gl_FragColor=vec4(tone(c),1.); }`
 		})
 	);
@@ -354,7 +363,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				vertexShader: `varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
 				fragmentShader:
 					COMMON +
-					`uniform sampler2D uMap; uniform vec2 uKM; uniform vec3 uRose; uniform vec4 uRip[8]; varying vec3 vW;
+					`uniform sampler2D uMap; uniform vec2 uKM; uniform vec3 uRose; uniform vec4 uRip[8], uLH[4]; varying vec3 vW;
         vec2 grad(vec2 p){ float e=.05, a=0., b=0., amp=1., fr=1.;
           for(int i=0;i<4;i++){ vec2 q=p*fr+vec2(uTime*.35*fr,uTime*.22);
             a+=(noise(q+vec2(e,0))-noise(q-vec2(e,0)))*amp; b+=(noise(q+vec2(0,e))-noise(q-vec2(0,e)))*amp; amp*=.55; fr*=2.1; }
@@ -367,24 +376,25 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float depth=mix(1.,texture2D(uMap,clamp(uv,0.,1.)).g,inside*ef);
           vec3 V=vW-cameraPosition; float dist=length(V); vec3 vd=V/dist;
           float far=smoothstep(15.,120.,dist);
-          vec2 g=grad(vW.xz*1.6)*.045*(1./(1.+dist*.02))*(1.-far*.7);
-          { // long directional swell (from the north-east) — only where it resolves
-            float sw=1.-smoothstep(8.,40.,dist);
-            vec2 d1=normalize(vec2(-.6,.8)), d2=normalize(vec2(-.9,.35));
-            g+=d1*cos(dot(d1,vW.xz)*38.-uTime*2.2)*.05*sw + d2*cos(dot(d2,vW.xz)*61.-uTime*2.9)*.03*sw; }
-          float ripGlow=0.;
-          float caps=0.;
-          { // wind waves at three scales, each kept only where it resolves on screen
-            vec2 wd=normalize(vec2(-.75,.55));
-            for(int i=0;i<3;i++){ float fq=i==0?.9:(i==1?3.2:11.); float amp=i==0?.2:(i==1?.1:.05);
-              vec2 q=vW.xz*fq; float res=1.-smoothstep(.15,.6,fwidth(q.x)+fwidth(q.y));
-              float ph=dot(q,wd)*2.2-uTime*(1.1+float(i)*.6);
-              vec2 gw=wd*cos(ph+noise(q*.6)*3.)+vec2(noise(q+uTime*.25)-.5,noise(q.yx-uTime*.2)-.5)*.8;
-              g+=gw*amp*res;
-              // whitecaps riding the crests
-              float crest=smoothstep(.9,1.,sin(ph+noise(q*.6)*3.))*smoothstep(.72,.86,noise(q*2.3+vec2(uTime*.3,0.)));
-              caps+=crest*res*(i==0?0.:(i==1?.22:.35)); }
-            caps*=inside*ef*(1.-clamp(texture2D(uMap,clamp(uv,0.,1.)).b/.5,0.,1.)*.6); }
+          // deep-water wave spectrum: 12 directional trains spread around the wind, dispersion w=sqrt(gk).
+          // Waves too small for the pixel are not drawn; their slope energy turns into surface roughness
+          // (widens the highlight) so distant water glitters instead of aliasing into stripes.
+          vec2 g=vec2(0.); float rough=.0006; float caps=0.; float ripGlow=0.;
+          { vec2 P=vW.xz; float f=15., a=.0042; float pw=max(fwidth(P.x),fwidth(P.y));
+            for(int i=0;i<16;i++){
+              float fi=float(i); float ang=-.65+(hash(vec2(fi,3.7))-.5)*3.;
+              vec2 d=vec2(cos(ang),sin(ang));
+              float ph=dot(d,P)*f - uTime*sqrt(f)*.9 + fi*1.93;
+              float res=1.-smoothstep(.25,.9,pw*f*.5);
+              float sl=f*a*(.45+1.1*noise(P*f*.07+vec2(fi*7.3,fi*1.9)));
+              g+=d*cos(ph)*sl*res;
+              rough+=sl*sl*.5*(1.-res);
+              caps+=smoothstep(.93,1.,sin(ph))*res*step(3.,fi)*.09;
+              f*=1.33; a*=.72; }
+            caps*=smoothstep(.72,.9,noise(P*9.+uTime*.15))*inside*ef;
+            // break the remaining regularity with turbulent noise slopes at the finest resolved scale
+            float rn=1.-smoothstep(.2,.8,pw*30.);
+            g+=grad(P*30.)*.012*rn + grad(P*9.+vec2(uTime*.1,0.))*.02*(1.-smoothstep(.2,.8,pw*9.)); }
           vec3 n=normalize(vec3(-g.x,1.,-g.y));
           vec3 r=reflect(vd,n); r.y=abs(r.y);
           float fres=.02+.98*pow(1.-max(dot(-vd,n),0.),5.);
@@ -408,8 +418,12 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
             float foam=(wave*.55*(.4+.6*br)+edge)*nearW*inside;
             c=mix(c,vec3(.92,.95,.94)*(.35+.75*day)*(1.-.6*nm),clamp(foam,0.,1.)*.85); }
           // moon path
-          float mp=pow(max(dot(r,uMoon),0.),mix(90.,24.,far))*smoothstep(20.,80.,dist);
-          c+=vec3(.75,.82,.95)*mp*nm*uDio*2.6;
+          float mp=pow(max(dot(r,uMoon),0.),clamp(.6/(rough*2.2),18.,500.))*clamp(.6/(rough*2.2)/150.,.4,2.);
+          c+=vec3(.75,.82,.95)*mp*nm*uDio*1.1;
+          // lighthouse lanterns reflected as long shimmering columns; brighter as the beam swings past
+          for(int i=0;i<4;i++){ vec3 L=normalize(uLH[i].xyz-vW); float ld=length(uLH[i].xyz-vW);
+            float sp=pow(max(dot(r,L),0.),clamp(.5/(rough*2.2),20.,400.));
+            c+=vec3(1.,.85,.6)*sp*(.15+1.2*uLH[i].w)*nm*smoothstep(1.,12.,ld)*exp(-ld*.04)*.8; }
           // bathymetric isolines every 20 m (shelf) — chart detail
           { float dm=depth*depth*1500.; float lv=dm/20.; float fw=max(fwidth(lv),1e-4);
             float ln=1.-min(abs(fract(lv-.5)-.5)/fw,1.);
@@ -431,8 +445,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
               float vis=(.35+.65*nm)*.9*(1.-smoothstep(.6,1.6,fwidth(rr)*60.));
               c=mix(c,gold*(.35+.65*shade)*(.6+.8*nm),star*.38*vis);
               c+=gold*(ring*.35+tick*.3)*vis; } }
-          float ex=mix(220.,36.,far);
-          float s=pow(max(dot(r,uSun),0.),ex)*smoothstep(-.06,.03,uSunElev)*sh*mix(3.,.9,far);
+          float ex=clamp(1./(rough*2.2),24.,900.);
+          float s=pow(max(dot(r,uSun),0.),ex)*smoothstep(-.06,.03,uSunElev)*sh*clamp(ex/260.,.35,2.2);
           c+=vec3(1.5,.9,.55)*s;
           // sun glitter: sparse sparks on the facets facing the sun
           { vec2 gc=floor(vW.xz*260.); float tw=floor(uTime*5.+hash(gc)*10.);
@@ -889,40 +903,93 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		scene.add(m);
 	}
 
-	// ---------- lighthouses: sweeping beams at dawn ----------
+	// ---------- lighthouses: white towers, glowing lantern, two volumetric beams, reflection on the sea ----------
+	const LH_H = 0.11; // tower height (exaggerated like the buildings)
 	const beamSweep = new THREE.ShaderMaterial({
 		uniforms: U,
 		transparent: true,
 		depthWrite: false,
 		side: THREE.DoubleSide,
 		blending: THREE.AdditiveBlending,
-		vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv=uv; vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+		vertexShader: `varying vec3 vW, vL, vN; void main(){ vL=position; vN=normalize(mat3(modelMatrix)*normal);
+        vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
 		fragmentShader:
 			COMMON +
-			`varying vec2 vUv; varying vec3 vW;
-      void main(){ float x=vUv.x, y=(vUv.y-.5)*2.;
-        float a=pow(1.-x,1.4)*exp(-y*y*(3.+x*-2.))*(.35+.65*smoothstep(0.,.04,x));
-        float dawn=1.-smoothstep(-.03,.05,uSunElev);
-        float dc=length(vW-cameraPosition); a*=dawn*.5*exp(-dc*.004)*smoothstep(10.,40.,dc);
-        gl_FragColor=vec4(vec3(1.,.86,.62)*a,1.); }`
+			`varying vec3 vW, vL, vN;
+      void main(){ float x=clamp(vL.x/7.,0.,1.);              // 0 at lantern .. 1 at the far end
+        vec3 V=normalize(cameraPosition-vW);
+        float rim=pow(abs(dot(normalize(vN),V)),1.6);           // thicker look through the middle of the cone
+        float dust=.65+.35*noise(vW.xz*4.+vec2(uTime*.3,0.))*noise(vW.xz*13.-uTime*.2);
+        float a=pow(1.-x,1.8)*rim*dust*(.25+.75*smoothstep(0.,.03,x));
+        float night=1.-smoothstep(-.06,.04,uSunElev);
+        float dc=length(vW-cameraPosition);
+        a*=night*.55*smoothstep(1.,6.,dc);
+        gl_FragColor=vec4(vec3(1.,.9,.7)*a,1.); }`
 	});
+	const towerMat = new THREE.ShaderMaterial({
+		uniforms: U,
+		vertexShader: `varying vec3 vW, vN; varying float vY; void main(){ vY=position.y; vN=normalize(mat3(modelMatrix)*normal); vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+		fragmentShader:
+			COMMON +
+			`varying vec3 vW, vN; varying float vY;
+      void main(){ vec3 n=normalize(vN); float band=step(.5,fract(vY/${LH_H.toFixed(3)}*3.5))*step(vY,${(LH_H * 0.8).toFixed(3)});
+        vec3 base=mix(vec3(.9,.9,.88),vec3(.62,.12,.1),band*.0);
+        vec3 c=base*(ambColor(n.y)*1.6+sunColor()*max(dot(n,uSun),0.)+vec3(.12,.14,.22)*nightAmt());
+        gl_FragColor=vec4(tone(fogged(c,vW,.0029)),1.); }`
+	});
+	const lanternMat = new THREE.ShaderMaterial({
+		uniforms: { ...U, uPx: { value: renderer.getPixelRatio() } },
+		transparent: true,
+		depthWrite: false,
+		blending: THREE.AdditiveBlending,
+		vertexShader: `attribute float flash; uniform float uPx, uSunElev; varying float vA;
+      void main(){ vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv;
+        float night=1.-smoothstep(-.06,.04,uSunElev);
+        vA=night*(.6+2.4*flash); gl_PointSize=clamp((60.+220.*flash)/-mv.z,3.,26.)*uPx; }`,
+		fragmentShader: `varying float vA; void main(){ vec2 d=gl_PointCoord-.5; float r2=dot(d,d);
+        float a=(exp(-r2*40.)+exp(-r2*9.)*.35)*vA; gl_FragColor=vec4(vec3(1.,.9,.72)*a,1.); }`
+	});
+	const lanternPos = new Float32Array(LIGHTHOUSES.length * 3), lanternFlash = new Float32Array(LIGHTHOUSES.length);
+	const lanternGeo = new THREE.BufferGeometry();
+	lanternGeo.setAttribute('position', new THREE.BufferAttribute(lanternPos, 3));
+	lanternGeo.setAttribute('flash', new THREE.BufferAttribute(lanternFlash, 1));
+	const lanterns = new THREE.Points(lanternGeo, lanternMat);
+	lanterns.frustumCulled = false;
+	lanterns.renderOrder = 8;
+	scene.add(lanterns);
+	U.uLH = { value: LIGHTHOUSES.map(() => new THREE.Vector4()) };
+	const coneGeo = new THREE.ConeGeometry(0.55, 7, 24, 1, true).rotateZ(Math.PI / 2).translate(3.5, 0, 0); // apex at origin, along +x
 	const lighthouses = LIGHTHOUSES.map((l, i) => {
+		const base = world(l.lat, l.lon);
+		const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.014, LH_H, 10).translate(0, LH_H / 2, 0), towerMat);
+		tower.position.copy(base);
+		scene.add(tower);
 		const g = new THREE.Group();
-		const plane = new THREE.PlaneGeometry(1, 1);
-		plane.translate(0.5, 0, 0);
-		const a = new THREE.Mesh(plane, beamSweep), b = new THREE.Mesh(plane, beamSweep);
-		a.scale.set(5, 0.5, 1);
-		b.scale.set(5, 0.5, 1);
-		b.rotation.x = Math.PI / 2;
-		const c = a.clone(), d = b.clone();
-		c.rotation.y = d.rotation.y = Math.PI;
-		g.add(a, b, c, d);
-		g.position.copy(world(l.lat, l.lon, 0.35));
+		const a = new THREE.Mesh(coneGeo, beamSweep), b = new THREE.Mesh(coneGeo, beamSweep);
+		b.rotation.y = Math.PI;
+		g.add(a, b);
+		g.position.copy(base).add(new THREE.Vector3(0, LH_H + 0.01, 0));
 		g.userData.phase = i * 1.7;
 		scene.add(g);
+		lanternPos.set([g.position.x, g.position.y, g.position.z], i * 3);
+		U.uLH.value[i].set(g.position.x, g.position.y, g.position.z, 0);
 		return g;
 	});
-
+	function updateLighthouses(time) {
+		for (let i = 0; i < lighthouses.length; i++) {
+			const g = lighthouses[i];
+			const ang = time * 0.9 + g.userData.phase;
+			g.rotation.y = ang;
+			// beam direction in xz (cone points along +x, rotated by y): (cos, -sin)
+			const dx = Math.cos(ang), dz = -Math.sin(ang);
+			const tx = camera.position.x - g.position.x, tz = camera.position.z - g.position.z, tl = Math.hypot(tx, tz) || 1;
+			const facing = Math.abs((dx * tx + dz * tz) / tl); // either beam
+			const flash = Math.pow(facing, 60);
+			lanternFlash[i] = flash;
+			U.uLH.value[i].w = flash;
+		}
+		lanternGeo.attributes.flash.needsUpdate = true;
+	}
 	// ---------- gulls crossing the dawn frame ----------
 	const gullGeo = new THREE.BufferGeometry();
 	gullGeo.setAttribute(
@@ -1194,6 +1261,68 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		scene.add(trees);
 	}
 
+	// ---------- night traffic: head/tail lights flowing along real main roads ----------
+	if (geo.roads?.length) {
+		const roads = geo.roads.map(([kind, ...pts]) => {
+			const P = pts.map(([u, v]) => new THREE.Vector3((u - 0.5) * KW, heightLin(u, v) + 0.03, (v - 0.5) * KH));
+			const cum = [0];
+			for (let i = 1; i < P.length; i++) cum.push(cum[i - 1] + P[i].distanceTo(P[i - 1]));
+			return { kind, P, cum, len: cum.at(-1) };
+		});
+		const total = roads.reduce((a, r) => a + r.len * r.kind, 0);
+		const NC = mobile ? 900 : 2600;
+		let rnd = 9;
+		const rand = () => (rnd = (rnd * 16807) % 2147483647) / 2147483647;
+		const cars = [];
+		for (let i = 0; i < NC; i++) {
+			let x = rand() * total, r = roads[0];
+			for (const rr of roads) { x -= rr.len * rr.kind; if (x <= 0) { r = rr; break; } }
+			cars.push({ r, s: rand() * r.len, v: (0.012 + rand() * 0.01) * (r.kind === 3 ? 1.5 : 1), dir: rand() < 0.5 ? 1 : -1 });
+		}
+		const cpos = new Float32Array(NC * 3), ccol = new Float32Array(NC);
+		cars.forEach((c, i) => (ccol[i] = c.dir > 0 ? 1 : 0));
+		const cg = new THREE.BufferGeometry();
+		cg.setAttribute('position', new THREE.BufferAttribute(cpos, 3));
+		cg.setAttribute('head', new THREE.BufferAttribute(ccol, 1));
+		const carPts = new THREE.Points(
+			cg,
+			new THREE.ShaderMaterial({
+				uniforms: { ...U, uPx: { value: renderer.getPixelRatio() } },
+				transparent: true,
+				depthWrite: false,
+				blending: THREE.AdditiveBlending,
+				vertexShader: `attribute float head; uniform float uPx, uSunElev; varying float vH, vA;
+          void main(){ vH=head; vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv;
+            vA=1.-smoothstep(-.06,.04,uSunElev); gl_PointSize=clamp(30./-mv.z,1.,3.2)*uPx; }`,
+				fragmentShader: `varying float vH, vA; void main(){ if(vA<=0.) discard; vec2 d=gl_PointCoord-.5; float a=exp(-dot(d,d)*14.)*vA;
+          gl_FragColor=vec4(mix(vec3(1.,.18,.08),vec3(1.,.92,.75),vH)*a*1.3,1.); }`
+			})
+		);
+		carPts.frustumCulled = false;
+		carPts.renderOrder = 4;
+		scene.add(carPts);
+		const tmpV = new THREE.Vector3();
+		var updateCars = (dt) => {
+			if (U.uSunElev.value > 0.05) return;
+			for (let i = 0; i < NC; i++) {
+				const c = cars[i], r = c.r;
+				c.s += c.v * c.dir * dt;
+				if (c.s > r.len) c.s -= r.len;
+				if (c.s < 0) c.s += r.len;
+				let k = 1;
+				while (k < r.cum.length - 1 && r.cum[k] < c.s) k++;
+				const a = r.P[k - 1], b = r.P[k], t = (c.s - r.cum[k - 1]) / (r.cum[k] - r.cum[k - 1] || 1);
+				tmpV.lerpVectors(a, b, t);
+				// keep to the right-hand lane
+				const nx = -(b.z - a.z), nz = b.x - a.x, nl = Math.hypot(nx, nz) || 1;
+				cpos[i * 3] = tmpV.x + (nx / nl) * 0.012 * c.dir;
+				cpos[i * 3 + 1] = tmpV.y;
+				cpos[i * 3 + 2] = tmpV.z + (nz / nl) * 0.012 * c.dir;
+			}
+			cg.attributes.position.needsUpdate = true;
+		};
+	}
+
 	// ---------- property markers ----------
 	const beamMat = new THREE.ShaderMaterial({
 		uniforms: U,
@@ -1461,8 +1590,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			? { pos: world(42.82, 28.35).setY(30), tgt: world(42.55, 27.6).setY(0) }
 			: { pos: world(42.8, 28.22).setY(13), tgt: world(42.56, 27.6).setY(0) }],
 		[1, mobile
-			? { pos: world(43.1, 28.3).setY(12), tgt: world(43.22, 27.93).setY(2) }
-			: { pos: world(43.15, 28.24).setY(6.5), tgt: world(43.215, 27.93).setY(1.6) }]
+			? { pos: world(42.98, 28.62).setY(16), tgt: world(42.98, 27.9).setY(1) }
+			: { pos: world(43.0, 28.62).setY(8.5), tgt: world(42.98, 27.92).setY(1.2) }]
 	];
 	const _sp = new THREE.Vector3(), _st = new THREE.Vector3();
 	let storyShift = 0;
@@ -1726,12 +1855,13 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		{
 			// keep the moon ahead of the viewer so its path always lies on the water in frame
 			const f = target.clone().sub(camera.position).setY(0).normalize();
-			U.uMoon.value.set(f.x, 0.2, f.z).normalize();
+			U.uMoon.value.set(f.x - f.z * 0.3, 0.15, f.z + f.x * 0.3).normalize();
 		}
 		updateShips(dt);
 		updateGulls(dt);
 		updateSea(dt);
-		for (const l of lighthouses) l.rotation.y = time * 0.9 + l.userData.phase;
+		if (typeof updateCars === 'function') updateCars(dt);
+		updateLighthouses(time);
 		const story = phase === 'over' && controlsOn && !ctrl.touched && !tween?.isActive();
 		if (story) {
 			storyPose(dayP);

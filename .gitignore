@@ -9,3 +9,4 @@ node_modules
 /tools/tiles
 
 tools/buildings_osm.json
+tools/roads_osm.json
