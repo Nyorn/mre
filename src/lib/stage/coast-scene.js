@@ -352,6 +352,54 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	skirt.position.y = -0.01;
 	scene.add(skirt);
 
+	// tileable wave texture: slopes of a sum of integer-wavenumber waves around the wind direction (+ slope² for LEAN)
+	{
+		const N = 256, sx = new Float32Array(N * N), sy = new Float32Array(N * N);
+		let rnd = 17;
+		const rand = () => (rnd = (rnd * 16807) % 2147483647) / 2147483647;
+		const waves = [];
+		for (let k = 0; k < 70; k++) {
+			const mag = 2 + Math.floor(Math.pow(rand(), 1.6) * 30);
+			const ang = -0.65 + (rand() - 0.5) * 2.4 + (rand() < 0.15 ? Math.PI * (rand() - 0.5) : 0);
+			const kx = Math.round(Math.cos(ang) * mag), ky = Math.round(Math.sin(ang) * mag);
+			if (!kx && !ky) continue;
+			const kk = Math.hypot(kx, ky);
+			waves.push([kx, ky, Math.pow(kk, -1.75) * (0.6 + rand() * 0.8), rand() * Math.PI * 2]);
+		}
+		for (let y = 0; y < N; y++)
+			for (let x = 0; x < N; x++) {
+				let gx = 0, gy = 0;
+				for (const [kx, ky, a, ph] of waves) {
+					const t = ((kx * x + ky * y) / N) * Math.PI * 2 + ph;
+					// sharpened (trochoid-ish) crest: derivative of sin + 0.25 sin(2t)
+					const d = Math.cos(t) + 0.5 * Math.cos(2 * t) * 0.25 * 2;
+					gx += a * kx * d;
+					gy += a * ky * d;
+				}
+				sx[y * N + x] = gx;
+				sy[y * N + x] = gy;
+			}
+		let rms = 0;
+		for (let i = 0; i < N * N; i++) rms += sx[i] * sx[i] + sy[i] * sy[i];
+		rms = Math.sqrt(rms / (N * N) / 2);
+		const SM = 3, data = new Uint8Array(N * N * 4);
+		for (let i = 0; i < N * N; i++) {
+			const a = Math.max(-SM, Math.min(SM, sx[i] / rms)), b = Math.max(-SM, Math.min(SM, sy[i] / rms));
+			data[i * 4] = Math.round((a / SM * 0.5 + 0.5) * 255);
+			data[i * 4 + 1] = Math.round((b / SM * 0.5 + 0.5) * 255);
+			data[i * 4 + 2] = Math.round(((a * a + b * b) / (SM * SM * 2)) * 255);
+			data[i * 4 + 3] = 255;
+		}
+		const wn = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+		wn.wrapS = wn.wrapT = THREE.RepeatWrapping;
+		wn.minFilter = THREE.LinearMipmapLinearFilter;
+		wn.magFilter = THREE.LinearFilter;
+		wn.generateMipmaps = true;
+		wn.anisotropy = renderer.capabilities.getMaxAnisotropy();
+		wn.needsUpdate = true;
+		U.uWN = { value: wn };
+	}
+
 	// water
 	const wg = new THREE.PlaneGeometry(3600, 3600, 1, 1);
 	wg.rotateX(-Math.PI / 2);
@@ -363,7 +411,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				vertexShader: `varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
 				fragmentShader:
 					COMMON +
-					`uniform sampler2D uMap; uniform vec2 uKM; uniform vec3 uRose; uniform vec4 uRip[8], uLH[4]; varying vec3 vW;
+					`uniform sampler2D uMap, uWN; uniform vec2 uKM; uniform vec3 uRose; uniform vec4 uRip[8], uLH[4]; varying vec3 vW;
         vec2 grad(vec2 p){ float e=.05, a=0., b=0., amp=1., fr=1.;
           for(int i=0;i<4;i++){ vec2 q=p*fr+vec2(uTime*.35*fr,uTime*.22);
             a+=(noise(q+vec2(e,0))-noise(q-vec2(e,0)))*amp; b+=(noise(q+vec2(0,e))-noise(q-vec2(0,e)))*amp; amp*=.55; fr*=2.1; }
@@ -376,25 +424,21 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float depth=mix(1.,texture2D(uMap,clamp(uv,0.,1.)).g,inside*ef);
           vec3 V=vW-cameraPosition; float dist=length(V); vec3 vd=V/dist;
           float far=smoothstep(15.,120.,dist);
-          // deep-water wave spectrum: 12 directional trains spread around the wind, dispersion w=sqrt(gk).
-          // Waves too small for the pixel are not drawn; their slope energy turns into surface roughness
-          // (widens the highlight) so distant water glitters instead of aliasing into stripes.
-          vec2 g=vec2(0.); float rough=.0006; float caps=0.; float ripGlow=0.;
-          { vec2 P=vW.xz; float f=15., a=.0042; float pw=max(fwidth(P.x),fwidth(P.y));
-            for(int i=0;i<16;i++){
-              float fi=float(i); float ang=-.65+(hash(vec2(fi,3.7))-.5)*3.;
-              vec2 d=vec2(cos(ang),sin(ang));
-              float ph=dot(d,P)*f - uTime*sqrt(f)*.9 + fi*1.93;
-              float res=1.-smoothstep(.25,.9,pw*f*.5);
-              float sl=f*a*(.45+1.1*noise(P*f*.07+vec2(fi*7.3,fi*1.9)));
-              g+=d*cos(ph)*sl*res;
-              rough+=sl*sl*.5*(1.-res);
-              caps+=smoothstep(.93,1.,sin(ph))*res*step(3.,fi)*.09;
-              f*=1.33; a*=.72; }
-            caps*=smoothstep(.72,.9,noise(P*9.+uTime*.15))*inside*ef;
-            // break the remaining regularity with turbulent noise slopes at the finest resolved scale
-            float rn=1.-smoothstep(.2,.8,pw*30.);
-            g+=grad(P*30.)*.012*rn + grad(P*9.+vec2(uTime*.1,0.))*.02*(1.-smoothstep(.2,.8,pw*9.)); }
+          // ocean normals from a mip-mapped, tileable wave texture (LEAN mapping): three layers at different
+          // scales/directions. Mips average the slopes away at distance and the stored slope² turns that lost
+          // detail into roughness — no aliasing, no grid, and the highlight widens into a natural glitter path.
+          vec2 g=vec2(0.); float rough=.0005; float caps=0.; float ripGlow=0.;
+          { vec2 P=vW.xz;
+            mat2 r1=mat2(.8,.6,-.6,.8), r2=mat2(.28,-.96,.96,.28);
+            vec4 tA=texture2D(uWN, r1*P/.38 + vec2(.021,.013)*uTime);
+            vec4 tB=texture2D(uWN, r2*P/1.35 + vec2(-.009,.012)*uTime);
+            vec4 tC=texture2D(uWN, P/.11 + vec2(.04,-.03)*uTime);
+            const float SM=3.;
+            vec2 mA=(tA.rg*2.-1.)*SM, mB=(tB.rg*2.-1.)*SM, mC=(tC.rg*2.-1.)*SM;
+            float vA=max(tA.b*SM*SM*2.-dot(mA,mA),0.), vB=max(tB.b*SM*SM*2.-dot(mB,mB),0.), vC=max(tC.b*SM*SM*2.-dot(mC,mC),0.);
+            const float wA=.055, wB=.06, wC=.035;
+            g=transpose(r1)*mA*wA + transpose(r2)*mB*wB + mC*wC;
+            rough+=wA*wA*vA+wB*wB*vB+wC*wC*vC; }
           vec3 n=normalize(vec3(-g.x,1.,-g.y));
           vec3 r=reflect(vd,n); r.y=abs(r.y);
           float fres=.02+.98*pow(1.-max(dot(-vd,n),0.),5.);
@@ -448,11 +492,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float ex=clamp(1./(rough*2.2),24.,900.);
           float s=pow(max(dot(r,uSun),0.),ex)*smoothstep(-.06,.03,uSunElev)*sh*clamp(ex/260.,.35,2.2);
           c+=vec3(1.5,.9,.55)*s;
-          // sun glitter: sparse sparks on the facets facing the sun
-          { vec2 gc=floor(vW.xz*260.); float tw=floor(uTime*5.+hash(gc)*10.);
-            float sp=step(.965,hash(gc+tw*.37))*pow(max(dot(r,uSun),0.),18.);
-            float res=1.-smoothstep(.3,1.,fwidth(vW.x*260.));
-            c+=vec3(1.6,1.1,.7)*sp*res*smoothstep(-.02,.1,uSunElev)*sh*2.5; }
+
           c=mix(c,vec3(.9,.94,.95)*(.3+.7*day)+vec3(.05,.06,.1)*nm,clamp(caps,0.,1.)*.5*(1.-nm*.7));
           c+=cursorLight(vW)*1.4;
           c+=vec3(1.4,.8,.45)*rim*2.;
