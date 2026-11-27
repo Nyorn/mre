@@ -661,6 +661,9 @@
 		.mapctl span {
 			display: none;
 		}
+		.compass {
+			display: none;
+		}
 		.ticker {
 			display: none;
 		}

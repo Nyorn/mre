@@ -15,6 +15,12 @@ const glsl = (oct) => /* glsl */ `
 #define CLOUD_H ${CLOUD_H.toFixed(1)}
 uniform float uTime, uSunElev, uCloudAmt, uFogScale;
 uniform vec3 uSun, uTarget;
+uniform float uDio; uniform vec2 uBox;
+// distance outside the model's footprint (<=0 inside)
+float boxOut(vec3 w){ return max(abs(w.x)-uBox.x, abs(w.z)-uBox.y); }
+// world beyond the model dissolves from the horizon inward; returns rim glow at the cut front (-1 = discard)
+float dioCut(vec3 w){ float o=boxOut(w); if(o<=0.) return 0.; float R=pow(1.-uDio,2.2)*2600.; if(o>R) return -1.;
+  return smoothstep(R-6.,R,o)*step(.001,uDio)*(1.-uDio*.6); }
 float hash(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
 float noise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
   return mix(mix(hash(i),hash(i+vec2(1,0)),f.x), mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x), f.y); }
@@ -51,7 +57,7 @@ vec3 ambColor(float ny){ float day=smoothstep(-.10,.25,uSunElev);
   return mix(vec3(.05,.07,.11), vec3(.30,.36,.44), day)*(.55+.45*ny); }
 vec3 fogged(vec3 c, vec3 wpos, float k){
   vec3 V = wpos-cameraPosition; float dist = length(V);
-  return mix(c, sky(normalize(vec3(V.x,.02,V.z))), 1.-exp(-pow(dist*k*uFogScale,1.6)));
+  return mix(c, sky(normalize(vec3(V.x,.02,V.z))), 1.-exp(-pow(dist*k*uFogScale*(1.-.62*uDio),1.6)));
 }
 `;
 
@@ -67,6 +73,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	]);
 	const M = geo.meta;
 	const KW = M.km[0], KH = M.km[1];
+	const BOT = 13, EXD = 22; // model base depth, bathymetry exaggeration
 	const luImg = M.landuse
 		? await new Promise((res) => {
 				const i = new Image();
@@ -114,7 +121,9 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		uFogScale: { value: mobile ? 0.6 : 1 },
 		uRibbon: { value: reduce ? 1 : 0 },
 		uFocus: { value: new THREE.Vector3() },
-		uFocusAmt: { value: 0 }
+		uFocusAmt: { value: 0 },
+		uDio: { value: reduce ? 1 : 0 },
+		uBox: { value: new THREE.Vector2(KW / 2, KH / 2) }
 	};
 	const setSun = () => {
 		const e = U.uSunElev.value;
@@ -134,7 +143,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			fragmentShader:
 				COMMON +
 				`varying vec3 vD;
-        void main(){ vec3 d=normalize(vD); d.y=max(d.y,-.02); vec3 c=sky(d);
+        void main(){ vec3 d0=normalize(vD); vec3 d=d0; d.y=max(d.y,-.02); vec3 c=sky(d);
+          c=mix(c, c*.18+vec3(.004,.008,.012), uDio*smoothstep(-.02,-.35,d0.y));
           float night=1.-smoothstep(-.10,.04,uSunElev);
           if(night>0.){ vec2 p=d.xz/(d.y+.35)*170.; vec2 cell=floor(p); float h=hash(cell);
             vec2 f=fract(p)-.5-(vec2(hash(cell+3.1),hash(cell+7.7))-.5)*.6;
@@ -172,10 +182,10 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			uniforms: U,
 			alphaToCoverage: true,
 			defines: { ...(skirt ? { SKIRT: 1 } : {}), SH_STEPS: mobile || skirt ? 0 : 12 },
-			vertexShader: `uniform sampler2D uMap; uniform float uLand; uniform vec2 uKM; varying vec2 vUv; varying vec3 vW;
+			vertexShader: `uniform sampler2D uMap; uniform float uLand, uDio; uniform vec2 uKM; varying vec2 vUv; varying vec3 vW;
         void main(){ vec4 w0=modelMatrix*vec4(position,1.); vec2 uv=vec2(w0.x/uKM.x+.5, .5-w0.z/uKM.y); vUv=uv;
           vec4 t=texture2D(uMap,clamp(uv,0.,1.)); float land=smoothstep(.3,.6,t.b);
-          float ed=smoothstep(0.,.06,min(min(uv.x,1.-uv.x),min(uv.y,1.-uv.y)));
+          float ed=mix(smoothstep(0.,.06,min(min(uv.x,1.-uv.x),min(uv.y,1.-uv.y))),1.,uDio);
           #ifdef SKIRT
             ed=0.;
           #endif
@@ -185,8 +195,10 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				COMMON +
 				`uniform sampler2D uMap, uLU; uniform vec2 uTexel,uKM; uniform float uLand, uHasLU; varying vec2 vUv; varying vec3 vW;
         void main(){
+          float rim=0.;
           #ifdef SKIRT
             if(vUv.x>0.002&&vUv.x<.998&&vUv.y>0.002&&vUv.y<.998) discard;
+            rim=dioCut(vW); if(rim<0.) discard;
           #endif
           vec2 uv=clamp(vUv,0.,1.);
           #ifdef SKIRT
@@ -202,7 +214,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float hE=texture2D(uMap,uv+vec2(uTexel.x,0)).r, hW=texture2D(uMap,uv-vec2(uTexel.x,0)).r;
           float hN=texture2D(uMap,uv+vec2(0,uTexel.y)).r, hS=texture2D(uMap,uv-vec2(0,uTexel.y)).r;
           float dx=(hE-hW)*uLand/(2.*uTexel.x*uKM.x), dz=(hS-hN)*uLand/(2.*uTexel.y*uKM.y);
-          float ed=smoothstep(0.,.06,min(min(vUv.x,1.-vUv.x),min(vUv.y,1.-vUv.y)));
+          float ed=mix(smoothstep(0.,.06,min(min(vUv.x,1.-vUv.x),min(vUv.y,1.-vUv.y))),1.,uDio);
           vec3 n=normalize(vec3(-dx*ed,1.,-dz*ed));
           float hm=t.r*1100.*ed;
           float vary=fbm(vW.xz*.35)*.5+mix(.5,fbm(vW.xz*2.2),near)*.5;
@@ -220,7 +232,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           // built-up: pale limestone with a faint block grain when close
           float blocks=noise(vW.xz*26.)*near;
           vec3 town=vec3(.50,.45,.39)*(.85+.3*blocks);
-          base=mix(base,town,smoothstep(.2,.7,lu.r)*mix(.05,.2,near)*(1.+4.*smoothstep(.4,.6,lu.b)));
+          base=mix(base,town,smoothstep(.2,.7,lu.r)*min(.38,mix(.05,.12,near)*(1.+4.*smoothstep(.4,.6,lu.b))));
           float sh=1.;
           #if SH_STEPS > 0
           { float lxz=max(length(uSun.xz),1e-3); vec2 dUV=vec2(uSun.x/uKM.x,-uSun.z/uKM.y)/lxz; float slope=uSun.y/lxz;
@@ -242,6 +254,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
             float inside=smoothstep(.45,.6,lu.b);
             c=mix(c,c*1.18+vec3(.035,.025,.01),inside*.6);
             c+=vec3(1.,.74,.40)*(edge*.75+glow*.8)*(.6+.4*smoothstep(-.02,.16,-uSunElev+.2)); }
+          c+=vec3(1.4,.8,.45)*rim*2.;
           gl_FragColor=vec4(tone(fogged(c,vW,.0029)),cov);
         }`
 		});
@@ -271,6 +284,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
             a+=(noise(q+vec2(e,0))-noise(q-vec2(e,0)))*amp; b+=(noise(q+vec2(0,e))-noise(q-vec2(0,e)))*amp; amp*=.55; fr*=2.1; }
           return vec2(a,b)/(2.*e); }
         void main(){
+          float rim=dioCut(vW); if(rim<0.) discard;
           vec2 uv=vec2(vW.x/uKM.x+.5, .5-vW.z/uKM.y);
           float inside=step(0.,uv.x)*step(uv.x,1.)*step(0.,uv.y)*step(uv.y,1.);
           float ef=smoothstep(0.,.1,min(min(uv.x,1.-uv.x),min(uv.y,1.-uv.y)));
@@ -289,11 +303,124 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float ex=mix(220.,36.,far);
           float s=pow(max(dot(r,uSun),0.),ex)*smoothstep(-.06,.03,uSunElev)*sh*mix(3.,.9,far);
           c+=vec3(1.5,.9,.55)*s;
+          c+=vec3(1.4,.8,.45)*rim*2.;
           gl_FragColor=vec4(tone(fogged(c,vW,.0032)),1.);
         }`
 			})
 		)
 	);
+
+	// ---------- diorama: cut walls (soil strata / water column / seabed) + base ----------
+	const wallMat = new THREE.ShaderMaterial({
+		uniforms: { ...U, uBot: { value: BOT }, uExd: { value: EXD } },
+		vertexShader: `uniform sampler2D uMap; uniform float uLand, uBot, uDio; uniform vec2 uKM; attribute float top;
+        varying vec2 vUv; varying vec3 vW; varying vec3 vN;
+        void main(){ vec2 uv=clamp(vec2(position.x/uKM.x+.5,.5-position.z/uKM.y),.0006,.9994); vUv=uv;
+          vec4 t=texture2D(uMap,uv); float land=smoothstep(.3,.6,t.b);
+          vec3 p=position; p.y = top>.5 ? max(t.r*uLand*land+.06*land,0.) : -uBot*uDio;
+          vN=normal; vec4 w=modelMatrix*vec4(p,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+		fragmentShader:
+			COMMON +
+			`uniform sampler2D uMap; uniform float uLand, uBot, uExd; varying vec2 vUv; varying vec3 vW; varying vec3 vN;
+        void main(){
+          vec4 t=texture2D(uMap,vUv); float land=smoothstep(.3,.6,t.b);
+          float surf=max(t.r*uLand*land+.06*land,0.);
+          float bed= land>.5 ? 0. : max(-t.g*t.g*1.5*uExd, -uBot*.62);
+          float y=vW.y; float along=vW.x+vW.z;
+          vec3 n=normalize(vN);
+          float lit=max(dot(n,uSun),0.)*.9+.1;
+          float day=smoothstep(-.10,.25,uSunElev);
+          vec3 c;
+          float wob=noise(vec2(along*.35,y*.8))*.35+noise(vec2(along*2.,y*3.))*.12;
+          if(y<0. && y>bed && land<.5){
+            // water column: glassy teal fading to ink with drifting light shafts
+            float k=clamp(-y/max(-bed,.01),0.,1.);
+            vec3 top=mix(vec3(.05,.20,.22),vec3(.16,.46,.46),day), deep=mix(vec3(.01,.03,.05),vec3(.02,.10,.14),day);
+            c=mix(top,deep,pow(k,.7));
+            float shaft=pow(noise(vec2(along*.08+uTime*.03,y*.15)),2.)*(1.-k)*.35;
+            c+=vec3(.25,.45,.42)*shaft*(.3+.7*day);
+            c+=vec3(.5,.8,.8)*exp(y*60.)*.35; // meniscus
+          } else {
+            // ground strata
+            float d=surf-y; float b=y+wob;
+            vec3 soil=vec3(.16,.11,.07), clay=vec3(.36,.24,.15), lime=vec3(.55,.48,.38), rock=vec3(.22,.20,.19), sand=vec3(.62,.52,.36);
+            float band=fract(b*.55);
+            c=mix(lime,clay,smoothstep(.2,.35,band)*(1.-smoothstep(.62,.7,band)));
+            c=mix(c,rock,smoothstep(-4.,-9.,y));
+            c*=.82+.36*noise(vec2(along*3.,y*14.));
+            if(land<.5) c=mix(c,sand,smoothstep(.25,0.,bed-y+.25)*step(y,bed));
+            c=mix(c,soil,smoothstep(.22,.05,d)*land);
+            c=mix(c,vec3(.12,.16,.08),smoothstep(.06,0.,d)*land);
+          }
+          c*= ambColor(.4)*2.2+sunColor()*lit*.9;
+          c*= mix(.3,1.,smoothstep(-uBot,-uBot+5.,y)); // contact darkening near the base
+          float gild=exp(-abs(y-max(surf,0.))*28.)*.5+exp(-abs(y+uBot)*40.)*.6;
+          c+=vec3(1.,.74,.42)*gild*(.4+.6*(1.-day));
+          gl_FragColor=vec4(tone(fogged(c,vW,.0029)),1.);
+        }`
+	});
+	const walls = new THREE.Group();
+	{
+		const hx = KW / 2, hz = KH / 2;
+		const edges = [
+			[[-hx, -hz], [hx, -hz], [0, 0, -1]],
+			[[hx, -hz], [hx, hz], [1, 0, 0]],
+			[[hx, hz], [-hx, hz], [0, 0, 1]],
+			[[-hx, hz], [-hx, -hz], [-1, 0, 0]]
+		];
+		for (const [[x0, z0], [x1, z1], nrm] of edges) {
+			const N = Math.round(Math.hypot(x1 - x0, z1 - z0) * (mobile ? 2.5 : 5));
+			const pos = [], topA = [], nor = [], idx = [];
+			for (let i = 0; i <= N; i++) {
+				const k = i / N, x = x0 + (x1 - x0) * k, z = z0 + (z1 - z0) * k;
+				pos.push(x, 0, z, x, 0, z);
+				topA.push(1, 0);
+				nor.push(...nrm, ...nrm);
+				if (i < N) {
+					const a = i * 2;
+					idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+				}
+			}
+			const g = new THREE.BufferGeometry();
+			g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+			g.setAttribute('top', new THREE.Float32BufferAttribute(topA, 1));
+			g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+			g.setIndex(idx);
+			const m = new THREE.Mesh(g, wallMat);
+			m.frustumCulled = false;
+			wallMat.side = THREE.DoubleSide;
+			walls.add(m);
+		}
+		const base = new THREE.Mesh(
+			new THREE.PlaneGeometry(KW, KH).rotateX(Math.PI / 2),
+			new THREE.MeshBasicMaterial({ color: 0x05080a })
+		);
+		base.position.y = -BOT;
+		walls.add(base);
+	}
+	const floor = new THREE.Mesh(
+		new THREE.PlaneGeometry(KW * 4, KH * 4).rotateX(-Math.PI / 2),
+		new THREE.ShaderMaterial({
+			uniforms: U,
+			transparent: true,
+			depthWrite: false,
+			vertexShader: `varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
+			fragmentShader:
+				COMMON +
+				`varying vec3 vW;
+        void main(){ vec2 q=abs(vW.xz)-uBox; float o=length(max(q,0.))+min(max(q.x,q.y),0.);
+          float shadow=1.-smoothstep(-20.,60.,o);
+          float glow=exp(-max(o,0.)/90.)*(1.-smoothstep(0.,700.,length(vW.xz)));
+          vec3 c=vec3(.55,.38,.26)*glow*.10*smoothstep(-.1,.2,uSunElev+.15);
+          float a=(shadow*.8+glow*.5)*uDio;
+          gl_FragColor=vec4(tone(c),a); }`
+		})
+	);
+	floor.position.y = -BOT - 6;
+	floor.renderOrder = -1;
+	walls.add(floor);
+	walls.visible = false;
+	scene.add(walls);
 
 	// clouds: one fbm deck, lit from below at dawn, opened up around the camera target when seen from above
 	const clouds = new THREE.Mesh(
@@ -320,6 +447,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float above=step(CLOUD_H,cameraPosition.y);
           float hole=mix(1., .32*smoothstep(14.,70.,length(vW.xz-uTarget.xz)), above);
           float a=d*.85*hole*smoothstep(.5,8.,dist)*(1.-smoothstep(320.,520.,dist));
+          a*=1.-uDio*smoothstep(-10.,30.,boxOut(vW));
           gl_FragColor=vec4(tone(fogged(c,vW,.0034)),a);
         }`
 		})
@@ -632,8 +760,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	// ---------- camera choreography ----------
 	const POSES = {
 		over: mobile
-			? { pos: A.clone().add(new THREE.Vector3(120, 190, -190)), tgt: A.clone().add(new THREE.Vector3(10, 0, 30)) }
-			: { pos: A.clone().add(new THREE.Vector3(82, 58, -156)), tgt: A.clone() },
+			? { pos: new THREE.Vector3(250, 360, -330), tgt: new THREE.Vector3(10, -20, 40) }
+			: { pos: new THREE.Vector3(215, 150, -205), tgt: new THREE.Vector3(35, -15, 22) },
 		intro: { pos: A.clone().add(new THREE.Vector3(36, 2.2, 34)), tgt: A.clone().add(new THREE.Vector3(240, 6, 84)) }
 	};
 	const objectPose = (m) => {
@@ -688,7 +816,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	// ---------- free map camera (home only) ----------
 	const ctrl = { tgt: new THREE.Vector3(), dist: 1, az: 0, pol: 1, touched: false };
 	const cur = { tgt: new THREE.Vector3(), dist: 1, az: 0, pol: 1 };
-	const LIM = { dMin: 10, dMax: 320, pMin: 0.08, pMax: 1.4, x: KW * 0.46, z: KH * 0.46 };
+	const LIM = { dMin: 10, dMax: 560, pMin: 0.08, pMax: 1.4, x: KW * 0.46, z: KH * 0.46 };
 	function ctrlFrom(pos, tgt) {
 		const o = pos.clone().sub(tgt), d = o.length();
 		ctrl.tgt.copy(tgt).setY(0);
@@ -803,6 +931,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	addEventListener('keydown', onKey);
 
 	const api = {
+		_dbg: import.meta.env.DEV ? { camera, target, ctrl, cur, POSES, ctrlFrom, U } : null,
 		phase: () => phase,
 		/** Dawn intro. Resolves when the overview is reached. */
 		async intro({ skip = false } = {}) {
@@ -909,6 +1038,14 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		last = time;
 		if (paused) return;
 		U.uTime.value = time;
+		{
+			const want = phase === 'intro' || phase === 'idle' ? 0 : 1;
+			const v = U.uDio.value;
+			U.uDio.value = reduce ? want : v + (want - v) * (1 - Math.exp(-dt * (want ? 0.9 : 3)));
+			if (Math.abs(U.uDio.value - want) < 0.001) U.uDio.value = want;
+			walls.visible = U.uDio.value > 0.002;
+			walls.children[4].position.y = -BOT * U.uDio.value;
+		}
 		updateShips(dt);
 		updateGulls(dt);
 		for (const l of lighthouses) l.rotation.y = time * 0.9 + l.userData.phase;
