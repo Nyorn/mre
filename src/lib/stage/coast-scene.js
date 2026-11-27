@@ -50,24 +50,29 @@ vec3 sky(vec3 d){
   vec3 horAway = mix(vec3(.05,.07,.11), vec3(.50,.58,.66), t);
   horAway = mix(horAway, vec3(.58,.47,.52), .55*smoothstep(-.02,.06,uSunElev)*(1.-smoothstep(.10,.24,uSunElev))*(1.-smoothstep(0.,.16,h)));
   vec3 horSun = mix(vec3(.30,.13,.16), vec3(1.25,.66,.36), t);
+  horSun = mix(horAway, horSun, smoothstep(-.19,-.06,uSunElev));
   float noon = smoothstep(.3,.85,uSunElev);
   horSun = mix(horSun, vec3(.72,.80,.86), noon);
   zen = mix(zen, vec3(.20,.38,.60), noon);
   vec3 c = mix(mix(horAway,horSun,toward), zen, pow(h,.45));
   float s = max(dot(d,uSun),0.);
   c += vec3(1.4,.85,.5)*pow(s,900.)*3.*smoothstep(-.06,.02,uSunElev);
-  c += vec3(1.,.55,.3)*pow(s,8.)*.35*(1.-t*.6)*(1.-noon*.8);
+  c += vec3(1.,.55,.3)*pow(s,8.)*.35*(1.-t*.6)*(1.-noon*.8)*smoothstep(-.18,-.04,uSunElev);
   return c;
 }
 vec3 starsMoon(vec3 d){ // night sky detail shared by the dome and water reflections
   float nm=1.-smoothstep(-.10,.02,uSunElev); if(nm<=0.||d.y<=0.) return vec3(0.);
-  vec2 p=d.xz/(d.y+.35)*150.; vec2 cell=floor(p); float h=hash(cell);
+  vec2 p=d.xz/(d.y+.35)*95.; vec2 cell=floor(p); float h=hash(cell);
   vec2 f=fract(p)-.5-(vec2(hash(cell+3.1),hash(cell+7.7))-.5)*.6;
-  float st=step(.972,h)*smoothstep(.16,0.,length(f))*smoothstep(.0,.2,d.y)*(.55+.45*sin(uTime*2.5+h*90.));
-  vec3 c=vec3(.9,.95,1.)*st*(.5+.8*fract(h*53.))*1.8;
+  float st=step(.968,h)*smoothstep(.26,0.,length(f))*smoothstep(.0,.12,d.y)*(.6+.4*sin(uTime*2.5+h*90.));
+  vec3 c=vec3(.9,.95,1.)*st*(.5+.9*fract(h*53.))*3.2;
   float md=max(dot(d,uMoon),0.);
   c+=vec3(.85,.9,1.)*(smoothstep(.99988,.99994,md)*1.6+pow(md,60.)*.10+pow(md,8.)*.035)*uDio;
   return c*nm; }
+uniform vec4 uCursor;
+vec3 cursorLight(vec3 w){ vec2 d=(w.xz-uCursor.xy)/max(uCursor.z,1e-3); float r2=dot(d,d);
+  float ng=1.-smoothstep(-.05,.2,uSunElev);
+  return vec3(1.,.82,.58)*(exp(-r2*1.2)*.10+exp(-r2*9.)*.08)*uCursor.w*(.6+.8*ng); }
 vec3 tone(vec3 c){ c = 1.-exp(-c*1.15); return pow(c, vec3(.95)); }
 vec3 sunColor(){ float day=smoothstep(-.10,.25,uSunElev);
   return mix(vec3(1.,.45,.22), vec3(1.05,.82,.62), day)*smoothstep(-.08,.04,uSunElev)*1.6; }
@@ -163,8 +168,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		uBox: { value: new THREE.Vector2(KW / 2, KH / 2) },
 		uRose: { value: new THREE.Vector3() },
 		uRip: { value: Array.from({ length: 8 }, () => new THREE.Vector4(0, 0, -99, 1)) },
-		uSim: { value: null },
-		uSimBox: { value: new THREE.Vector4(0, 0, 0, 0) }
+		uCursor: { value: new THREE.Vector4(0, 0, 1, 0) }
 	};
 	const setSun = () => {
 		const e = U.uSunElev.value;
@@ -205,7 +209,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           if(d0.y>0.){ // high cirrus streaks, lit by the low sun
             vec2 cp=d0.xz/(d0.y+.12)*1.6+vec2(uTime*.004,0.);
             float ci=fbm(vec2(cp.x*.7+cp.y*.4,cp.y*3.2))*fbm(cp*2.3+7.);
-            ci=smoothstep(.18,.42,ci)*smoothstep(0.,.25,d0.y)*(1.-smoothstep(.55,.95,d0.y));
+            ci=smoothstep(.18,.42,ci)*smoothstep(0.,.25,d0.y)*(1.-smoothstep(.55,.95,d0.y))*smoothstep(-.16,-.02,uSunElev);
             float fwd=pow(max(dot(normalize(d0.xz),normalize(uSun.xz)),0.),2.);
             vec3 ctint=mix(vec3(.9,.92,1.)*.55, vec3(1.25,.55,.42), (1.-smoothstep(.05,.35,uSunElev)))*(.35+.9*fwd);
             c=mix(c, c*.7+ctint*smoothstep(-.12,.02,uSunElev), ci*.55);
@@ -316,16 +320,17 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           c=mix(c, c*1.35+vec3(.02,.018,.012), (1.-min(f,1.))*.32*clFade);
           { float ng=1.-smoothstep(-.07,.03,uSunElev);
             float grain=noise(vW.xz*38.)*noise(vW.xz*11.+3.);
-            c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*(.15+1.5*grain)*ng*mix(.12,1.,smoothstep(.4,.6,lu.b));
-            c+=vec3(1.,.58,.28)*smoothstep(.1,.75,lu.b)*.32*ng; }
+            c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*(.06+1.4*grain*grain)*ng*mix(.12,1.,smoothstep(.4,.6,lu.b))*mix(1.,.3,near);
+            c+=vec3(1.,.58,.28)*smoothstep(.1,.75,lu.b)*.07*ng*(1.-near*.7); }
           { // town boundaries: soft warm fill + crisp glowing outline
             float fb=max(fwidth(lu.b),1e-4);
             float edge=1.-smoothstep(fb*.6,fb*1.8,abs(lu.b-.5));
             float glow=exp(-abs(lu.b-.5)/(fb*5.))*.35;
             float inside=smoothstep(.45,.6,lu.b);
-            c=mix(c,c*1.18+vec3(.035,.025,.01),inside*.6);
+            c=mix(c,c*1.18+vec3(.035,.025,.01),inside*.6*smoothstep(-.07,.03,uSunElev));
             }
           c+=vec3(1.4,.8,.45)*rim*2.;
+          c+=cursorLight(vW)*(.6+.4*base*3.);
           gl_FragColor=vec4(tone(fogged(c,vW,.0029)),cov);
         }`
 		});
@@ -349,7 +354,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 				vertexShader: `varying vec3 vW; void main(){ vec4 w=modelMatrix*vec4(position,1.); vW=w.xyz; gl_Position=projectionMatrix*viewMatrix*w; }`,
 				fragmentShader:
 					COMMON +
-					`uniform sampler2D uMap, uSim; uniform vec2 uKM; uniform vec3 uRose; uniform vec4 uRip[8], uSimBox; varying vec3 vW;
+					`uniform sampler2D uMap; uniform vec2 uKM; uniform vec3 uRose; uniform vec4 uRip[8]; varying vec3 vW;
         vec2 grad(vec2 p){ float e=.05, a=0., b=0., amp=1., fr=1.;
           for(int i=0;i<4;i++){ vec2 q=p*fr+vec2(uTime*.35*fr,uTime*.22);
             a+=(noise(q+vec2(e,0))-noise(q-vec2(e,0)))*amp; b+=(noise(q+vec2(0,e))-noise(q-vec2(0,e)))*amp; amp*=.55; fr*=2.1; }
@@ -367,15 +372,19 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
             float sw=1.-smoothstep(8.,40.,dist);
             vec2 d1=normalize(vec2(-.6,.8)), d2=normalize(vec2(-.9,.35));
             g+=d1*cos(dot(d1,vW.xz)*38.-uTime*2.2)*.05*sw + d2*cos(dot(d2,vW.xz)*61.-uTime*2.9)*.03*sw; }
-          // interactive water: heightfield simulated on the GPU around the view
           float ripGlow=0.;
-          if(uSimBox.z>0.){ vec2 su=(vW.xz-uSimBox.xy)/uSimBox.z+.5;
-            if(su.x>0.&&su.x<1.&&su.y>0.&&su.y<1.){ float e=uSimBox.w*1.5;
-              float hc=texture2D(uSim,su).r;
-              float hx=texture2D(uSim,su+vec2(e,0.)).r-texture2D(uSim,su-vec2(e,0.)).r;
-              float hz=texture2D(uSim,su+vec2(0.,e)).r-texture2D(uSim,su-vec2(0.,e)).r;
-              float fe=smoothstep(0.,.08,min(min(su.x,1.-su.x),min(su.y,1.-su.y)));
-              g+=vec2(hx,hz)*9.*fe; ripGlow=clamp(hc*2.5,0.,1.)*fe; } }
+          float caps=0.;
+          { // wind waves at three scales, each kept only where it resolves on screen
+            vec2 wd=normalize(vec2(-.75,.55));
+            for(int i=0;i<3;i++){ float fq=i==0?.9:(i==1?3.2:11.); float amp=i==0?.2:(i==1?.1:.05);
+              vec2 q=vW.xz*fq; float res=1.-smoothstep(.15,.6,fwidth(q.x)+fwidth(q.y));
+              float ph=dot(q,wd)*2.2-uTime*(1.1+float(i)*.6);
+              vec2 gw=wd*cos(ph+noise(q*.6)*3.)+vec2(noise(q+uTime*.25)-.5,noise(q.yx-uTime*.2)-.5)*.8;
+              g+=gw*amp*res;
+              // whitecaps riding the crests
+              float crest=smoothstep(.9,1.,sin(ph+noise(q*.6)*3.))*smoothstep(.72,.86,noise(q*2.3+vec2(uTime*.3,0.)));
+              caps+=crest*res*(i==0?0.:(i==1?.22:.35)); }
+            caps*=inside*ef*(1.-clamp(texture2D(uMap,clamp(uv,0.,1.)).b/.5,0.,1.)*.6); }
           vec3 n=normalize(vec3(-g.x,1.,-g.y));
           vec3 r=reflect(vd,n); r.y=abs(r.y);
           float fres=.02+.98*pow(1.-max(dot(-vd,n),0.),5.);
@@ -430,7 +439,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
             float sp=step(.965,hash(gc+tw*.37))*pow(max(dot(r,uSun),0.),18.);
             float res=1.-smoothstep(.3,1.,fwidth(vW.x*260.));
             c+=vec3(1.6,1.1,.7)*sp*res*smoothstep(-.02,.1,uSunElev)*sh*2.5; }
-          c+=mix(vec3(.6,.78,.82),vec3(.8,.85,1.),nm)*ripGlow*.18*(.5+.5*day+.6*nm);
+          c=mix(c,vec3(.9,.94,.95)*(.3+.7*day)+vec3(.05,.06,.1)*nm,clamp(caps,0.,1.)*.5*(1.-nm*.7));
+          c+=cursorLight(vW)*1.4;
           c+=vec3(1.4,.8,.45)*rim*2.;
           gl_FragColor=vec4(tone(fogged(c,vW,.0032)),1.);
         }`
@@ -571,13 +581,14 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float day=smoothstep(-.10,.25,uSunElev);
           float forward=pow(max(dot(vd,uSun),0.),5.);
           vec3 sc=sunColor();
-          vec3 base=mix(vec3(.16,.13,.16),vec3(.78,.80,.86),day);
+          vec3 base=mix(vec3(.05,.06,.09),vec3(.78,.80,.86),day)+vec3(.04,.05,.08)*nightAmt();
           vec3 c=base*(.55+.35*(1.-d2)) + sc*(.32+.95*forward)*(1.-d2*.6);
           c+=sc*forward*(1.-d)*1.2;
           float above=step(CLOUD_H,cameraPosition.y);
           float hole=mix(1., mix(.5,1.,smoothstep(14.,70.,length(vW.xz-uTarget.xz))), above);
           float a=d*(uLayer==0.?.7:.45)*hole*smoothstep(.5,8.,dist)*(1.-smoothstep(320.,520.,dist));
           a*=1.-uDio*smoothstep(-10.,30.,boxOut(vW));
+          a*=1.-.55*nightAmt();
           gl_FragColor=vec4(tone(fogged(c,vW,.0034)),a);
         }`
 		})
@@ -892,7 +903,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
       void main(){ float x=vUv.x, y=(vUv.y-.5)*2.;
         float a=pow(1.-x,1.4)*exp(-y*y*(3.+x*-2.))*(.35+.65*smoothstep(0.,.04,x));
         float dawn=1.-smoothstep(-.03,.05,uSunElev);
-        float dc=length(vW-cameraPosition); a*=dawn*.95*exp(-dc*.004)*smoothstep(4.,14.,dc);
+        float dc=length(vW-cameraPosition); a*=dawn*.5*exp(-dc*.004)*smoothstep(10.,40.,dc);
         gl_FragColor=vec4(vec3(1.,.86,.62)*a,1.); }`
 	});
 	const lighthouses = LIGHTHOUSES.map((l, i) => {
@@ -900,8 +911,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		const plane = new THREE.PlaneGeometry(1, 1);
 		plane.translate(0.5, 0, 0);
 		const a = new THREE.Mesh(plane, beamSweep), b = new THREE.Mesh(plane, beamSweep);
-		a.scale.set(9, 0.9, 1);
-		b.scale.set(9, 0.9, 1);
+		a.scale.set(5, 0.5, 1);
+		b.scale.set(5, 0.5, 1);
 		b.rotation.x = Math.PI / 2;
 		const c = a.clone(), d = b.clone();
 		c.rotation.y = d.rotation.y = Math.PI;
@@ -1450,8 +1461,8 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			? { pos: world(42.82, 28.35).setY(30), tgt: world(42.55, 27.6).setY(0) }
 			: { pos: world(42.8, 28.22).setY(13), tgt: world(42.56, 27.6).setY(0) }],
 		[1, mobile
-			? { pos: world(41.9, 29.1).setY(330), tgt: world(42.9, 27.9).setY(-10) }
-			: { pos: world(42.05, 28.95).setY(150), tgt: world(42.95, 27.95).setY(-10) }]
+			? { pos: world(43.1, 28.3).setY(12), tgt: world(43.22, 27.93).setY(2) }
+			: { pos: world(43.15, 28.24).setY(6.5), tgt: world(43.215, 27.93).setY(1.6) }]
 	];
 	const _sp = new THREE.Vector3(), _st = new THREE.Vector3();
 	let storyShift = 0;
@@ -1507,7 +1518,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		setDay(p) {
 			dayP = Math.min(1, Math.max(0, p));
 		},
-		_dbg: import.meta.env.DEV ? { camera, target, ctrl, cur, POSES, ctrlFrom, U, renderer, get sim() { return [simRT, simI]; }, get outl() { return outlMesh; } } : null,
+		_dbg: import.meta.env.DEV ? { camera, target, ctrl, cur, POSES, ctrlFrom, U, renderer, get outl() { return outlMesh; } } : null,
 		phase: () => phase,
 		/** Dawn intro. Resolves when the overview is reached. */
 		async intro({ skip = false } = {}) {
@@ -1605,69 +1616,26 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	const pointer = { x: 0, y: 0 };
 	const rayc = new THREE.Raycaster(), ndc2 = new THREE.Vector2(), hitP = new THREE.Vector3(), seaPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 	let ripI = 0, ripLast = -9, lastHit = new THREE.Vector3(1e9, 0, 0), pmx = 0, pmy = 0;
-	// --- shallow-water wave equation on a 512² grid that follows the camera target ---
-	const SIM = 512;
-	const simRT = [0, 1].map(
-		() => new THREE.WebGLRenderTarget(SIM, SIM, { type: THREE.HalfFloatType, format: THREE.RGBAFormat, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false })
-	);
-	const simMat = new THREE.ShaderMaterial({
-		uniforms: { tPrev: { value: null }, uMap: U.uMap, uKM: U.uKM, uBox: { value: new THREE.Vector3() }, uDrop: { value: new THREE.Vector4(0, 0, 0, 0) }, uTex: { value: 1 / SIM }, uClear: { value: 0 } },
-		vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.xy,0.,1.); }`,
-		fragmentShader: `uniform sampler2D tPrev, uMap; uniform vec2 uKM; uniform vec3 uBox; uniform vec4 uDrop; uniform float uTex, uClear; varying vec2 vUv;
-      void main(){
-        vec2 w=uBox.xy+(vUv-.5)*uBox.z; vec2 tuv=vec2(w.x/uKM.x+.5, .5-w.y/uKM.y);
-        float land=step(.5,texture2D(uMap,clamp(tuv,0.,1.)).b);
-        vec4 c=texture2D(tPrev,vUv);
-        float n=texture2D(tPrev,vUv+vec2(0.,uTex)).r, s=texture2D(tPrev,vUv-vec2(0.,uTex)).r;
-        float e=texture2D(tPrev,vUv+vec2(uTex,0.)).r, wv=texture2D(tPrev,vUv-vec2(uTex,0.)).r;
-        float h=((n+s+e+wv)*.5-c.g)*.994;
-        float d=length((vUv-uDrop.xy)/uDrop.z); h+=uDrop.w*exp(-d*d*3.);
-        h*=(1.-land)*(1.-uClear);
-        float edge=smoothstep(0.,.03,min(min(vUv.x,1.-vUv.x),min(vUv.y,1.-vUv.y)));
-        gl_FragColor=vec4(h*edge, c.r*edge*(1.-uClear), 0., 1.); }`
-	});
-	const simScene = new THREE.Scene(), simCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-	simScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), simMat));
-	let simI = 0;
-	const simOn = !mobile && !reduce;
-	const simBox = new THREE.Vector3(1e9, 0, 0);
-	function stepSim(drop) {
-		simMat.uniforms.tPrev.value = simRT[simI].texture;
-		simMat.uniforms.uDrop.value.copy(drop);
-		renderer.setRenderTarget(simRT[1 - simI]);
-		renderer.render(simScene, simCam);
-		renderer.setRenderTarget(null);
-		simI = 1 - simI;
-		simMat.uniforms.uClear.value = 0;
-	}
-	const dropV = new THREE.Vector4();
-	function updateRipples() {
-		if (!simOn) return;
-		// keep the grid around what we look at; snap so the field isn't smeared by small moves
-		const L0 = THREE.MathUtils.clamp(camera.position.distanceTo(target) * 0.9, 4, 220);
-		const L = Math.pow(1.6, Math.round(Math.log(L0) / Math.log(1.6)));
-		const snap = L / 4, cx = Math.round(target.x / snap) * snap, cz = Math.round(target.z / snap) * snap;
-		if (L !== simBox.z || cx !== simBox.x || cz !== simBox.y) {
-			simBox.set(cx, cz, L);
-			simMat.uniforms.uBox.value.copy(simBox);
-			simMat.uniforms.uClear.value = 1;
-		}
-		U.uSimBox.value.set(simBox.x, simBox.y, simBox.z, 1 / SIM);
-		dropV.set(0, 0, 1, 0);
-		if ((phase === 'over' || phase === 'object') && (pointer.x !== pmx || pointer.y !== pmy)) {
-			const sp = Math.hypot(pointer.x - pmx, pointer.y - pmy);
-			pmx = pointer.x;
-			pmy = pointer.y;
+	// soft light that follows the cursor over the map (like a lamp held over a model)
+	const curTgt = new THREE.Vector4(0, 0, 1, 0);
+	function updateRipples(dt) {
+		const C = U.uCursor.value;
+		const active = !mobile && (phase === 'over' || phase === 'object');
+		if (active) {
 			ndc2.set(pointer.x * 2, -pointer.y * 2);
 			rayc.setFromCamera(ndc2, camera);
-			if (rayc.ray.intersectPlane(seaPlane, hitP) && waterAt(hitP.x, hitP.z)) {
-				dropV.set((hitP.x - simBox.x) / L + 0.5, (hitP.z - simBox.y) / L + 0.5, 0.01, Math.min(1.2, 0.15 + sp * 45));
-			}
-		}
-		stepSim(dropV);
-		dropV.w = 0;
-		stepSim(dropV);
-		U.uSim.value = simRT[simI].texture;
+			if (rayc.ray.intersectPlane(seaPlane, hitP) && Math.abs(hitP.x) < KW / 2 && Math.abs(hitP.z) < KH / 2) {
+				const moved = pointer.x !== pmx || pointer.y !== pmy;
+				pmx = pointer.x;
+				pmy = pointer.y;
+				curTgt.set(hitP.x, hitP.z, camera.position.distanceTo(hitP) * 0.045, moved ? 1 : Math.max(0.55, curTgt.w - dt * 0.15));
+			} else curTgt.w = 0;
+		} else curTgt.w = 0;
+		const k = 1 - Math.exp(-dt * 10);
+		C.x += (curTgt.x - C.x) * k;
+		C.y += (curTgt.y - C.y) * k;
+		C.z += (curTgt.z - C.z) * k;
+		C.w += (curTgt.w - C.w) * (1 - Math.exp(-dt * 3));
 	}
 
 	// flyby flock: a skein of gulls crossing the frame now and then in story mode
@@ -1787,11 +1755,11 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		skyMesh.position.copy(camera.position);
 		clouds.position.x = camera.position.x;
 		clouds.position.z = camera.position.z;
-		updateRipples();
+		updateRipples(dt);
 		updateFlyby(dt);
 		if (usePost) {
 			const camD = camera.position.distanceTo(target);
-			tilt.uniforms.uAmt.value = (mobile ? 0.5 : 0.75) * U.uDio.value * THREE.MathUtils.smoothstep(camD, 40, 160);
+			tilt.uniforms.uAmt.value = (mobile ? 0.5 : 0.75) * (1 - 0.8 * THREE.MathUtils.smoothstep(-U.uSunElev.value, 0.02, 0.15)) * U.uDio.value * THREE.MathUtils.smoothstep(camD, 40, 160);
 			composer.render(dt);
 		} else renderer.render(scene, camera);
 
