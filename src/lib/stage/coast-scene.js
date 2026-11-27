@@ -101,6 +101,23 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		const i = (y * img.width + x) * 4;
 		return px[i + 2] > 127 ? (px[i] / 255) * (M.landMax / 1000) * EX : 0;
 	};
+	const waterAt = (x, z) => {
+		const u = x / KW + 0.5, v = z / KH + 0.5;
+		if (u < 0 || u > 1 || v < 0 || v > 1) return false;
+		const i = (Math.round(v * (img.height - 1)) * img.width + Math.round(u * (img.width - 1))) * 4;
+		return px[i + 2] < 110;
+	};
+	// bilinear land height matching the terrain mesh (R*land), in world units
+	const heightLin = (u, v) => {
+		const fx = Math.min(img.width - 1.001, Math.max(0, u * (img.width - 1))), fy = Math.min(img.height - 1.001, Math.max(0, v * (img.height - 1)));
+		const x = Math.floor(fx), y = Math.floor(fy), ax = fx - x, ay = fy - y;
+		const h = (xx, yy) => {
+			const i = (yy * img.width + xx) * 4;
+			const land = Math.min(1, Math.max(0, (px[i + 2] / 255 - 0.3) / 0.3));
+			return (px[i] / 255) * (M.landMax / 1000) * EX * land * land * (3 - 2 * land);
+		};
+		return (h(x, y) * (1 - ax) + h(x + 1, y) * ax) * (1 - ay) + (h(x, y + 1) * (1 - ax) + h(x + 1, y + 1) * ax) * ay;
+	};
 	const world = (lat, lon, lift = 0) => {
 		const [u, v] = proj.uv(lat, lon);
 		return new THREE.Vector3((u - 0.5) * KW, heightUV(u, v) + lift, (v - 0.5) * KH);
@@ -244,8 +261,10 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           #ifndef SKIRT
           lu=texture2D(uLU,uv).rgb*uHasLU;
           #endif
+          float wet=(1.-smoothstep(.5,.56,t.b))*near;
+          base*=1.-wet*.35;
           // beaches: bright sand ribbon
-          base=mix(base,vec3(.78,.66,.48),smoothstep(.15,.6,lu.g)*.9);
+          base=mix(base,vec3(.78,.66,.48),smoothstep(.45,.8,lu.g)*.75);
           // built-up: pale limestone with a faint block grain when close
           float blocks=noise(vW.xz*26.)*near;
           vec3 town=vec3(.50,.45,.39)*(.85+.3*blocks);
@@ -263,7 +282,7 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           float cl=hm/50.; float fw=max(fwidth(cl),1e-4); float f=abs(fract(cl-.5)-.5)/fw;
           float clFade=(1.-smoothstep(.25,.6,fw))*smoothstep(8.,30.,hm);
           c=mix(c, c*1.35+vec3(.02,.018,.012), (1.-min(f,1.))*.32*clFade);
-          { float ng=1.-smoothstep(-.02,.16,uSunElev);
+          { float ng=1.-smoothstep(-.07,.03,uSunElev);
             float grain=noise(vW.xz*38.)*noise(vW.xz*11.+3.);
             c+=vec3(1.,.62,.32)*smoothstep(.2,.7,lu.r)*(.15+1.5*grain)*ng*mix(.12,1.,smoothstep(.4,.6,lu.b));
             c+=vec3(1.,.58,.28)*smoothstep(.1,.75,lu.b)*.32*ng; }
@@ -321,9 +340,21 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
           vec3 body=mix(shallow,deep,smoothstep(0.,.55,depth))*(.55+.45*sh);
           float nm=nightAmt();
           body+=vec3(.010,.022,.035)*nm;
+          // shoreline: turquoise shallows, caustics, rolling surf (close range only)
+          float lm=texture2D(uMap,clamp(uv,0.,1.)).b*inside; float sh0=clamp(lm/.5,0.,1.);
+          float nearW=1.-smoothstep(12.,60.,dist);
+          float shw=smoothstep(.12,.0,depth)*inside*ef;
+          body=mix(body,mix(vec3(.04,.14,.15),vec3(.16,.52,.50),day),shw*(.35+.45*sh0));
+          { vec2 cq=vW.xz*55.+uTime*.6; float ca=pow(1.-abs(noise(cq)-noise(cq*1.7+3.1)),8.);
+            body+=vec3(.5,.8,.7)*ca*shw*sh0*day*nearW*.35; }
           vec3 c=mix(body,sky(r)*(.7+.3*sh),fres*.9);
+          { float k=(1.-sh0)*4.; float br=noise(vW.xz*18.+uTime*.2);
+            float wave=smoothstep(.86,1.,sin(k*6.2832+uTime*1.6+br*2.5))*smoothstep(.55,.8,sh0)*(1.-smoothstep(.9,.97,sh0))*step(.45,br);
+            float edge=smoothstep(.86,.97,sh0)*(.6+.4*br);
+            float foam=(wave*.55*(.4+.6*br)+edge)*nearW*inside;
+            c=mix(c,vec3(.92,.95,.94)*(.35+.75*day)*(1.-.6*nm),clamp(foam,0.,1.)*.85); }
           // moon path
-          float mp=pow(max(dot(r,uMoon),0.),mix(90.,24.,far));
+          float mp=pow(max(dot(r,uMoon),0.),mix(90.,24.,far))*smoothstep(20.,80.,dist);
           c+=vec3(.75,.82,.95)*mp*nm*uDio*2.6;
           // bathymetric isolines every 20 m (shelf) — chart detail
           { float dm=depth*depth*1500.; float lv=dm/20.; float fw=max(fwidth(lv),1e-4);
@@ -575,7 +606,18 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	if (geo.towns?.length) {
 		const pos = [], side = [], dist = [], nrm = [], idx = [];
 		let base = 0;
+		const runs = [];
 		for (const line of geo.towns) {
+			let run = [];
+			for (const pt of line) {
+				if (waterAt((pt[0] - 0.5) * KW, (pt[1] - 0.5) * KH)) {
+					if (run.length > 1) runs.push(run);
+					run = [];
+				} else run.push(pt);
+			}
+			if (run.length > 1) runs.push(run);
+		}
+		for (const line of runs) {
 			const pts = line.map(([u, v]) => new THREE.Vector3((u - 0.5) * KW, Math.max(0, heightUV(u, v)) + 0.14, (v - 0.5) * KH));
 			let acc = 0;
 			for (let i = 0; i < pts.length; i++) {
@@ -769,9 +811,11 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 		depthWrite: false,
 		blending: THREE.AdditiveBlending,
 		vertexShader: `attribute float size; varying vec2 vQ; uniform float uSunElev;
-      void main(){ vQ=position.xz; gl_Position=projectionMatrix*viewMatrix*modelMatrix*vec4(position,1.); }`,
+      varying float vCd;
+      void main(){ vQ=position.xz; vec4 w=modelMatrix*vec4(position,1.); vCd=length(w.xyz-cameraPosition); gl_Position=projectionMatrix*viewMatrix*w; }`,
 		fragmentShader: `uniform float uSunElev; varying vec2 vQ;
-      void main(){ float r=length(vQ); float ng=1.-smoothstep(-.04,.12,uSunElev);
+      varying float vCd;
+      void main(){ float r=length(vQ); float ng=(1.-smoothstep(-.07,.02,uSunElev))*smoothstep(8.,70.,vCd);
         float a=exp(-r*r*5.)*.55+exp(-r*r*40.)*.5; gl_FragColor=vec4(vec3(1.,.62,.3)*a*ng,1.); }`
 	});
 	for (const pl of PLACES.filter((p) => p.tier === 1 || p.tier === 2)) {
@@ -863,12 +907,6 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 	}
 
 	// ---------- life on the water: yachts circling off the resorts, gull flocks ----------
-	const waterAt = (x, z) => {
-		const u = x / KW + 0.5, v = z / KH + 0.5;
-		if (u < 0 || u > 1 || v < 0 || v > 1) return false;
-		const i = (Math.round(v * (img.height - 1)) * img.width + Math.round(u * (img.width - 1))) * 4;
-		return px[i + 2] < 110;
-	};
 	const M_WHITE = shipMat('#eceae4'), M_SAIL = shipMat('#f6f3ea');
 	const sailGeo = new THREE.BufferGeometry();
 	sailGeo.setAttribute('position', new THREE.Float32BufferAttribute([0.15, 0.05, 0, 0.15, 0.95, 0, -0.42, 0.05, 0, 0.18, 0.05, 0, 0.18, 0.7, 0, 0.5, 0.05, 0], 3));
@@ -973,6 +1011,125 @@ export async function createCoastScene({ canvas, properties, reduce = false, mob
 			}
 		}
 		flockMesh.instanceMatrix.needsUpdate = true;
+	}
+
+	// ---------- architectural-model layer: OSM buildings as white blocks, trees as felt balls ----------
+	const NEAR0 = mobile ? 14 : 30, NEAR1 = mobile ? 30 : 75; // grow in as the camera comes close
+	const modelMat = (kind) =>
+		new THREE.ShaderMaterial({
+			uniforms: { ...U, uNear: { value: new THREE.Vector2(NEAR0, NEAR1) } },
+			defines: { [kind]: 1 },
+			vertexShader: `uniform vec2 uNear; varying vec3 vW, vN, vC; varying float vY, vH;
+        void main(){
+          vec3 ctr=(modelMatrix*instanceMatrix*vec4(0.,0.,0.,1.)).xyz;
+          float grow=1.-smoothstep(uNear.x,uNear.y,length(ctr-cameraPosition));
+          vec3 p=position;
+          #ifdef BLDG
+            p.y*=grow;
+          #else
+            p*=grow;
+          #endif
+          vec4 w=modelMatrix*instanceMatrix*vec4(p,1.); vW=w.xyz;
+          vN=normalize(mat3(modelMatrix)*mat3(instanceMatrix)*normal);
+          vY=position.y; vH=length(instanceMatrix[1].xyz)*grow;
+          #ifdef USE_INSTANCING_COLOR
+            vC=instanceColor;
+          #else
+            vC=vec3(1.);
+          #endif
+          gl_Position=projectionMatrix*viewMatrix*w; }`,
+			fragmentShader:
+				COMMON +
+				`varying vec3 vW, vN, vC; varying float vY, vH;
+        void main(){
+          vec3 n=normalize(vN); float day=smoothstep(-.10,.25,uSunElev); float ng=1.-smoothstep(-.07,.03,uSunElev);
+          float lit=max(dot(n,uSun),0.)*cloudShadow(vW);
+          #ifdef BLDG
+            vec3 base=vec3(.88,.86,.82)*mix(.92,1.06,step(.5,n.y));
+            float ao=mix(.5,1.,smoothstep(0.,.45,vY));
+            vec3 c=base*(ambColor(n.y)*1.6+sunColor()*lit*1.1)*ao;
+            // windows: warm grid on the walls at night
+            float mH=vY*vH*1000./1.25;
+            float along=(abs(n.x)>abs(n.z)?vW.z:vW.x)*1000.;
+            vec2 cell=vec2(floor(along/4.),floor(mH/3.));
+            vec2 f=vec2(fract(along/4.),fract(mH/3.));
+            float win=step(.25,f.x)*step(f.x,.75)*step(.3,f.y)*step(f.y,.75)*step(.5,1.-abs(n.y))*step(1.5,mH);
+            float on=step(.55,hash(cell+floor(vW.xz*37.)));
+            float wall=step(.5,1.-abs(n.y))*step(1.5,mH);
+            float fw=fwidth(along/4.)+fwidth(mH/3.);
+            float lights=mix(win*on, .28*wall, smoothstep(.25,.9,fw));
+            c+=vec3(1.,.72,.4)*(lights*1.8+step(.5,n.y)*.10)*ng;
+            c=mix(c,c*.6+vec3(.02,.025,.04),ng*.3);
+          #else
+            vec3 base=vC*(.75+.25*n.y);
+            vec3 c=base*(ambColor(n.y)*1.5+sunColor()*lit*.95);
+          #endif
+          gl_FragColor=vec4(tone(fogged(c,vW,.0029)),1.);
+        }`
+		});
+	if (M.buildings) {
+		fetch('/geo/buildings.bin' + ver)
+			.then((r) => r.arrayBuffer())
+			.then((buf) => {
+				const dv = new DataView(buf), n = Math.floor(buf.byteLength / 8);
+				const box = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+				const mesh = new THREE.InstancedMesh(box, modelMat('BLDG'), n);
+				const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+				const HB = 1.25 / 1000; // building heights: metres -> world, exaggerated like a model
+				for (let i = 0; i < n; i++) {
+					const o = i * 8;
+					const u = dv.getUint16(o, true) / 65535, v = dv.getUint16(o + 2, true) / 65535;
+					const w = dv.getUint8(o + 4) / 1000, d = dv.getUint8(o + 5) / 1000;
+					const ang = (dv.getUint8(o + 6) / 255) * Math.PI, h = Math.max(4, dv.getUint8(o + 7));
+					ps.set((u - 0.5) * KW, heightLin(u, v) + 0.045, (v - 0.5) * KH);
+					q.setFromAxisAngle(up, ang);
+					sc.set(w, h * HB + 0.006, d);
+					mesh.setMatrixAt(i, m4.compose(ps, q, sc));
+				}
+				mesh.frustumCulled = false;
+				scene.add(mesh);
+			})
+			.catch(() => {});
+	}
+	if (luImg) {
+		const lc = Object.assign(document.createElement('canvas'), { width: luImg.width, height: luImg.height });
+		const lx = lc.getContext('2d', { willReadFrequently: true });
+		lx.drawImage(luImg, 0, 0);
+		const ld = lx.getImageData(0, 0, luImg.width, luImg.height).data;
+		const luAt = (u, v) => ld[(Math.round(v * (luImg.height - 1)) * luImg.width + Math.round(u * (luImg.width - 1))) * 4];
+		const isLand = (u, v) => px[(Math.round(v * (img.height - 1)) * img.width + Math.round(u * (img.width - 1))) * 4 + 2] > 170;
+		const WANT = mobile ? 9000 : 42000;
+		let rnd = 5;
+		const rand = () => (rnd = (rnd * 16807) % 2147483647) / 2147483647;
+		const pts = [];
+		for (let k = 0; k < 1500000 && pts.length < WANT * 5; k++) {
+			const u = 0.3 + rand() * 0.7, v = rand();
+			if (!isLand(u, v) || luAt(u, v) > 40) continue;
+			const x = (u - 0.5) * KW, z = (v - 0.5) * KH;
+			if (!(waterAt(x + 3, z) || waterAt(x + 6, z) || waterAt(x - 3, z) || waterAt(x, z + 4) || waterAt(x, z - 4))) continue; // coastal belt
+			const n1 = Math.sin(x * 1.7 + Math.sin(z * 1.3)) + Math.sin(z * 2.3 + x * 0.6);
+			if (n1 < 0.2) continue;
+			const cnt = 4 + Math.floor(rand() * 9);
+			for (let c = 0; c < cnt; c++) {
+				const tx = x + (rand() - 0.5) * 0.14, tz = z + (rand() - 0.5) * 0.14;
+				const tu = tx / KW + 0.5, tv = tz / KH + 0.5;
+				if (!isLand(tu, tv) || luAt(tu, tv) > 60) continue;
+				pts.push(tx, heightLin(tu, tv) + 0.05, tz, 0.008 + rand() * 0.008, rand());
+			}
+		}
+		const n = pts.length / 5;
+		const crown = new THREE.IcosahedronGeometry(1, 0);
+		const trees = new THREE.InstancedMesh(crown, modelMat('TREE'), n);
+		const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), col = new THREE.Color();
+		for (let i = 0; i < n; i++) {
+			const r = pts[i * 5 + 3], hue = pts[i * 5 + 4];
+			ps.set(pts[i * 5], pts[i * 5 + 1] + r * 1.4, pts[i * 5 + 2]);
+			sc.set(r, r * 1.7, r);
+			trees.setMatrixAt(i, m4.compose(ps, q, sc));
+			trees.setColorAt(i, col.setRGB(0.12 + hue * 0.08, 0.2 + hue * 0.08, 0.09 + hue * 0.03));
+		}
+		trees.frustumCulled = false;
+		scene.add(trees);
 	}
 
 	// ---------- property markers ----------
